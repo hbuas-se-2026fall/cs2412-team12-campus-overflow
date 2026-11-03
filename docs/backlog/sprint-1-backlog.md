@@ -1,7 +1,7 @@
 # Sprint 1 Backlog v1.0 · CampusOverflow
 
 > Lab 2 产出物 ④｜Sprint 1：第 3 周 – 第 4 周（10 个工作日）｜Sprint 计划会：第 3 周 Lab 2 最后 15 分钟
-> 团队仓库：https://github.com/ennonhy/campus-overflow
+> 团队仓库：https://github.com/hbuas-se-2026fall/cs2412-team12-campus-overflow
 > 小组成员：倪昊宇，陶浩峰，陈玉豪，程靖轩，刘铭洋
 
 ## 1. Sprint 目标（一句话，可演示）
