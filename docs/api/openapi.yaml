@@ -1,0 +1,353 @@
+openapi: 3.0.3
+info:
+  title: CampusOverflow API
+  version: 0.1.0
+  description: |
+    CampusOverflow 后端契约（Lab 4 实现，Lab 5 前端据此生成 TypeScript 客户端）。
+    统一错误响应为 `{ code, message, traceId, timestamp, path, details[] }`，前端按 `code` 分支。
+servers:
+  - url: /
+    description: 同域部署 / Vite 开发代理（/api → localhost:8080）
+
+paths:
+  /api/v1/users:
+    post:
+      tags: [Users]
+      operationId: registerUser
+      summary: 注册账号（初始状态 pending）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserRequest'
+      responses:
+        '201':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '409':
+          description: 邮箱已注册
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/users/{id}/email-verification:
+    post:
+      tags: [Users]
+      operationId: verifyEmail
+      summary: 模拟点击邮件验证链接（pending → active）
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: 验证成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/users/{id}:
+    get:
+      tags: [Users]
+      operationId: getUser
+      summary: 查询账号
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: 账号信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/questions:
+    get:
+      tags: [Questions]
+      operationId: listQuestions
+      summary: 问题列表（按创建时间倒序分页）
+      parameters:
+        - name: page
+          in: query
+          description: 页码，从 0 开始
+          schema:
+            type: integer
+            format: int32
+            default: 0
+            minimum: 0
+        - name: size
+          in: query
+          description: 每页条数（1–100）
+          schema:
+            type: integer
+            format: int32
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: 分页结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionPageResponse'
+    post:
+      tags: [Questions]
+      operationId: createQuestion
+      summary: 发布问题
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQuestionRequest'
+      responses:
+        '201':
+          description: 创建成功
+          headers:
+            Location:
+              description: 新问题详情地址
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionResponse'
+        '400':
+          description: 请求校验失败 / 不变式违反（INV-Q-01、INV-Q-02、INV-U-02）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/questions/{id}:
+    get:
+      tags: [Questions]
+      operationId: getQuestion
+      summary: 问题详情
+      parameters:
+        - $ref: '#/components/parameters/QuestionId'
+      responses:
+        '200':
+          description: 问题详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/questions/{id}/acceptance:
+    post:
+      tags: [Questions]
+      operationId: acceptAnswer
+      summary: 采纳答案（仅提问者）
+      parameters:
+        - $ref: '#/components/parameters/QuestionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptAnswerRequest'
+      responses:
+        '200':
+          description: 采纳后的问題
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionResponse'
+        '400':
+          description: 不变式违反（INV-Q-03 / INV-Q-04 / INV-Q-05）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    QuestionId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    RegisterUserRequest:
+      type: object
+      required: [email, nickname, password]
+      properties:
+        email:
+          type: string
+          maxLength: 254
+        nickname:
+          type: string
+          maxLength: 32
+        password:
+          type: string
+          minLength: 8
+          maxLength: 64
+          description: 至少 8 位且同时包含字母与数字（INV-U-03）
+
+    UserResponse:
+      type: object
+      required: [id, email, nickname, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        nickname:
+          type: string
+        status:
+          type: string
+          enum: [pending, active, disabled]
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateQuestionRequest:
+      type: object
+      required: [askerId, title, body]
+      properties:
+        askerId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 5
+          maxLength: 150
+        body:
+          type: string
+          maxLength: 20000
+        tags:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            minLength: 2
+            maxLength: 20
+          description: 必须来自共享词表 SK-01（INV-Q-02）
+
+    QuestionResponse:
+      type: object
+      required: [id, askerId, title, body, tags, status, voteCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        askerId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        body:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [open, solved, hidden]
+        acceptedAnswerId:
+          type: string
+          format: uuid
+          nullable: true
+        voteCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    QuestionPageResponse:
+      type: object
+      required: [items, page, size, total, hasNext]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        total:
+          type: integer
+          format: int64
+        hasNext:
+          type: boolean
+
+    AcceptAnswerRequest:
+      type: object
+      required: [answerId, operatorId]
+      properties:
+        answerId:
+          type: string
+          format: uuid
+        operatorId:
+          type: string
+          format: uuid
+
+    ErrorResponse:
+      type: object
+      required: [code, message, timestamp, path]
+      properties:
+        code:
+          type: string
+          description: 稳定错误码（不变式编号，如 INV-Q-02）
+        message:
+          type: string
+        traceId:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+
+    ErrorDetail:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
