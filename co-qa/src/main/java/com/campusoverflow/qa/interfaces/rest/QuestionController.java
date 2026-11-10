@@ -46,11 +46,12 @@ public class QuestionController {
         return ResponseEntity.created(location).body(QuestionResponse.from(question));
     }
 
-    /** 问题列表（US-03 的最小实现，Lab 5 前端首页使用）。 */
+    /** 问题列表（US-03）：可选按标签筛选（US-10）。 */
     @GetMapping
     public QuestionPageResponse list(@RequestParam(name = "page", defaultValue = "0") int page,
-                                     @RequestParam(name = "size", defaultValue = "20") int size) {
-        return QuestionPageResponse.from(questionApplicationService.list(page, size));
+                                     @RequestParam(name = "size", defaultValue = "20") int size,
+                                     @RequestParam(name = "tag", required = false) String tag) {
+        return QuestionPageResponse.from(questionApplicationService.list(page, size, tag));
     }
 
     /** 查看问题详情（US-05 的最小实现，便于端到端验证"写进去能读出来"）。 */

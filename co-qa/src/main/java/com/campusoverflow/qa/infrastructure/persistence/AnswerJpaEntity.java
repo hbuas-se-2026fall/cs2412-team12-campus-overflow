@@ -34,6 +34,9 @@ public class AnswerJpaEntity {
     @Column(name = "accepted", nullable = false)
     private boolean accepted;
 
+    @Column(name = "vote_count", nullable = false)
+    private int voteCount;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -53,12 +56,13 @@ public class AnswerJpaEntity {
     }
 
     public void apply(String questionId, String authorId, String body, String status, boolean accepted,
-                      Instant createdAt, Instant updatedAt) {
+                      int voteCount, Instant createdAt, Instant updatedAt) {
         this.questionId = questionId;
         this.authorId = authorId;
         this.body = body;
         this.status = status;
         this.accepted = accepted;
+        this.voteCount = voteCount;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -85,6 +89,10 @@ public class AnswerJpaEntity {
 
     public boolean isAccepted() {
         return accepted;
+    }
+
+    public int getVoteCount() {
+        return voteCount;
     }
 
     public Instant getCreatedAt() {

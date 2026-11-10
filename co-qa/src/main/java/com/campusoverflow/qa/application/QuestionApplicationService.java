@@ -2,6 +2,7 @@ package com.campusoverflow.qa.application;
 
 import com.campusoverflow.qa.application.command.AcceptAnswerCommand;
 import com.campusoverflow.qa.application.command.CreateQuestionCommand;
+import com.campusoverflow.qa.application.command.SubmitAnswerCommand;
 import com.campusoverflow.qa.application.view.QuestionPage;
 import com.campusoverflow.qa.domain.model.Answer;
 import com.campusoverflow.qa.domain.model.AnswerId;
@@ -18,14 +19,19 @@ import com.campusoverflow.shared.domain.DomainEventPublisher;
 import com.campusoverflow.shared.domain.EntityNotFoundException;
 import com.campusoverflow.shared.domain.InvariantViolationException;
 import com.campusoverflow.shared.identity.UserId;
+import com.campusoverflow.shared.tag.Tag;
 import com.campusoverflow.shared.tag.TagVocabulary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 问答应用服务：把一次用例编排成"取聚合 → 守护卫 → 调聚合方法 → 保存 → 发事件"。
@@ -57,7 +63,7 @@ public class QuestionApplicationService {
     }
 
     /**
-     * 发布问题（Lab 4 的端到端接口）：校验提问人 → 校验标签词表 → 聚合内校验标题/正文 → 落库 → 发事件。
+     * 发布问题：校验提问人 → 解析/登记标签 → 聚合内校验标题/正文 → 落库 → 发事件。
      */
     @Transactional
     public Question create(CreateQuestionCommand command) {
@@ -67,12 +73,42 @@ public class QuestionApplicationService {
 
         Title title = Title.of(command.title());
         Body body = Body.ofQuestion(command.body());
-        TagSet tags = TagSet.of(command.tags(), tagVocabulary);
+        TagSet tags = resolveTags(command.tags());
 
         Question question = Question.post(QuestionId.newId(), askerId, title, body, tags, now());
         Question saved = questionRepository.save(question);
         // 事件只存在于"刚计算的聚合"上；save() 返回的是重建对象，没有事件
         eventPublisher.publish(question.pullDomainEvents());
+        return saved;
+    }
+
+    /**
+     * 提交回答（US-06）：问题必须可见（INV-A-02），同一作者对同一问题 60 秒限流（INV-A-03）。
+     */
+    @Transactional
+    public Answer submitAnswer(SubmitAnswerCommand command) {
+        QuestionId questionId = QuestionId.of(command.questionId());
+        UserId authorId = UserId.of(command.authorId());
+        askerVerifier.ensureCanPublish(authorId);
+
+        Question question = get(questionId);
+        if (!question.status().isVisible()) {
+            throw new InvariantViolationException(AnswerInvariants.QUESTION_MUST_BE_VISIBLE,
+                    "问题已下架，不能再回答");
+        }
+
+        Instant now = now();
+        answerRepository.findLatestByQuestionAndAuthor(questionId, authorId).ifPresent(last -> {
+            long seconds = Duration.between(last.createdAt(), now).getSeconds();
+            if (seconds >= 0 && seconds < 60) {
+                throw new InvariantViolationException(AnswerInvariants.SUBMIT_TOO_FREQUENT,
+                        "同一问题 60 秒内只能提交一次回答，请 " + (60 - seconds) + " 秒后再试");
+            }
+        });
+
+        Answer answer = Answer.submit(AnswerId.newId(), questionId, authorId, Body.ofAnswer(command.body()), now);
+        Answer saved = answerRepository.save(answer);
+        eventPublisher.publish(answer.pullDomainEvents());
         return saved;
     }
 
@@ -95,8 +131,14 @@ public class QuestionApplicationService {
             throw new InvariantViolationException(AnswerInvariants.QUESTION_MUST_BE_VISIBLE, "该回答已被下架，不能被采纳");
         }
 
+        // 改判时要知道上一位被采纳者的 ID，声誉上下文才能冲正（INV-R-03）
+        UserId previousAnswerAuthorId = question.acceptedAnswerId()
+                .flatMap(previous -> answerRepository.findById(AnswerId.of(previous.asString())))
+                .map(Answer::authorId)
+                .orElse(null);
+
         Instant now = now();
-        question.acceptAnswer(answerId, operatorId, now);
+        question.acceptAnswer(answerId, answer.authorId(), previousAnswerAuthorId, operatorId, now);
         answer.markAccepted(now);
 
         Question saved = questionRepository.save(question);
@@ -122,14 +164,20 @@ public class QuestionApplicationService {
     }
 
     /**
-     * 问题列表（US-03 的最小实现，Lab 5 前端"提问 → 列表显示"依赖它）。
-     *
-     * <p>分页参数在这里夹紧：页码不能为负、每页最多 100 条，避免前端传错参数把库打穿。</p>
+     * 问题列表（US-03）：可选按标签筛选（US-10），分页参数在这里夹紧。
      */
     @Transactional(readOnly = true)
-    public QuestionPage list(int page, int size) {
+    public QuestionPage list(int page, int size, String tag) {
         int safePage = Math.max(0, page);
         int safeSize = Math.min(100, Math.max(1, size));
+        if (tag != null && !tag.isBlank()) {
+            String normalized = Tag.of(tag).value();
+            return new QuestionPage(
+                    questionRepository.findPageByTag(normalized, safePage, safeSize),
+                    safePage,
+                    safeSize,
+                    questionRepository.countByTag(normalized));
+        }
         return new QuestionPage(
                 questionRepository.findPage(safePage, safeSize),
                 safePage,
@@ -137,13 +185,34 @@ public class QuestionApplicationService {
                 questionRepository.count());
     }
 
-    /** 与数据库 DATETIME(6) 对齐：先截断到微秒，避免写回后精度"变小"。 */
-    private Instant now() {
-        return clock.instant().truncatedTo(ChronoUnit.MICROS);
-    }
-
     @Transactional(readOnly = true)
     public List<Answer> answersOf(QuestionId questionId) {
         return answerRepository.findByQuestionId(questionId);
+    }
+
+    /**
+     * 标签解析（US-10）：词表可扩展——未知标签自动登记，不再直接拒绝。
+     *
+     * <p>这是 Sprint 3 对 INV-Q-02 的修订：词表从"封闭白名单"变成"可扩展词表"，
+     * 原因见 {@code docs/adr/ADR-003-sprint3-core-features.md}。</p>
+     */
+    private TagSet resolveTags(List<String> rawTags) {
+        if (rawTags == null || rawTags.isEmpty()) {
+            return TagSet.empty();
+        }
+        List<Tag> tags = new ArrayList<>();
+        Set<Tag> seen = new HashSet<>();
+        for (String raw : rawTags) {
+            Tag tag = Tag.of(raw);
+            if (seen.add(tag)) {
+                tags.add(tagVocabulary.registerIfAbsent(tag));
+            }
+        }
+        return new TagSet(tags);
+    }
+
+    /** 与数据库 DATETIME(6) 对齐：先截断到微秒，避免写回后精度"变小"。 */
+    private Instant now() {
+        return clock.instant().truncatedTo(ChronoUnit.MICROS);
     }
 }
