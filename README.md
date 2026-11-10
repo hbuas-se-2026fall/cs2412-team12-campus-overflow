@@ -1,9 +1,10 @@
-# CampusOverflow · 后端工程（Lab 4）
+# CampusOverflow · 后端（Lab 4）+ 前端（Lab 5）
 
-> 《软件工程》课程项目 · 第 12 组 · Sprint 2 · 第 7 周
+> 《软件工程》课程项目 · 第 12 组 · Sprint 2
 >
-> **一个按 DDD 限界上下文物理分包的 Spring Boot 多模块工程**：6 个 Maven 模块、每个模块内部 domain / application / infrastructure / interfaces 四层，
-> 首个端到端接口 `POST /api/v1/questions` 已经打通 Controller → ApplicationService → Repository → MySQL。
+> **后端**：按 DDD 限界上下文物理分包的 Spring Boot 多模块工程（6 个 Maven 模块，domain / application / infrastructure / interfaces 四层），
+> `POST /api/v1/questions` 打通 Controller → ApplicationService → Repository → MySQL。
+> **前端**：React 18 + TypeScript 5 + Vite 6，已与后端端到端贯通「提问 → 列表显示 → 详情查看」（见 [`frontend/README.md`](frontend/README.md)）。
 
 | 交付物 | 位置 | 状态 |
 |---|---|---|
@@ -12,6 +13,8 @@
 | ③ 分模块决策记录 | [`docs/adr/ADR-002-package-structure.md`](docs/adr/ADR-002-package-structure.md) | ✅ |
 | ④ Postman Collection（含 `POST /api/v1/questions` 成功用例） | [`docs/api/CampusOverflow-Lab4.postman_collection.json`](docs/api/CampusOverflow-Lab4.postman_collection.json) | ✅ |
 | 附：本地 MySQL 实测记录（截图级证据） | [`docs/lab4/验证记录.md`](docs/lab4/验证记录.md) | ✅ |
+| **Lab 5** 前端工程（`pnpm dev` / lint / typecheck / E2E） | [`frontend/`](frontend/README.md) | ✅ |
+| 附：Lab 5 验证记录（真实浏览器 + 录像 + SELECT） | [`docs/lab5/验证记录.md`](docs/lab5/验证记录.md) | ✅ |
 
 ---
 
@@ -80,10 +83,13 @@ campus-overflow/
 │       ├── application.yml
 │       ├── logback-spring.xml
 │       └── db/migration/V1__init_schema.sql
+├── frontend/                        # Lab 5 前端：React 18 + TS 5 + Vite 6（详见 frontend/README.md）
 └── docs/
     ├── adr/ADR-002-package-structure.md
     ├── api/CampusOverflow-Lab4.postman_collection.json
-    └── lab4/验证记录.md
+    ├── api/openapi.yaml             # 前后端契约（前端据此生成客户端）
+    ├── lab4/验证记录.md
+    └── lab5/验证记录.md
 ```
 
 依赖方向（评审按这条打回）：
@@ -305,7 +311,9 @@ mvn -pl co-qa test       # 只跑问答上下文
 
 - [ADR-002 · 分模块与分层方案](docs/adr/ADR-002-package-structure.md)
 - [Postman Collection](docs/api/CampusOverflow-Lab4.postman_collection.json)
+- [OpenAPI 契约](docs/api/openapi.yaml)
 - [本地 MySQL 实测记录](docs/lab4/验证记录.md)
 - [小组分工（WBS / PR 拆分 / 评审配对）](docs/lab4/小组分工.md)
 - [提交与 PR 说明（UPLOAD）](UPLOAD.md)
+- **Lab 5**：[前端 README](frontend/README.md)、[Lab 5 验证记录](docs/lab5/验证记录.md)、[Lab 5 小组分工](docs/lab5/小组分工.md)
 - Lab 3 产出（同仓库 `docs/ddd/`）：聚合识别清单、上下文映射、统一语言术语表
