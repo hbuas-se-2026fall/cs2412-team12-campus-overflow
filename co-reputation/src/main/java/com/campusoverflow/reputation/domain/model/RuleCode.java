@@ -11,7 +11,9 @@ public enum RuleCode {
     ANSWER_SUBMITTED(5),
     ANSWER_ACCEPTED(15),
     UPVOTE_RECEIVED(10),
-    DOWNVOTE_RECEIVED(-2);
+    DOWNVOTE_RECEIVED(-2),
+    /** 改判冲正：撤销上一位被采纳者的 +15（INV-R-03）。 */
+    ACCEPT_REVERSED(-15);
 
     private final int delta;
 

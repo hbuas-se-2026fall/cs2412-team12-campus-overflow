@@ -32,19 +32,19 @@ class ReputationAccountTest {
     void acceptedAnswerAddsFifteen() {
         ReputationAccount account = ReputationAccount.open(USER);
 
-        assertTrue(account.apply(1001L, RuleCode.ANSWER_ACCEPTED, NOW));
+        assertTrue(account.apply("AA:1001", RuleCode.ANSWER_ACCEPTED, NOW));
 
         assertEquals(16, account.score().value());
-        assertEquals(RuleCode.ANSWER_ACCEPTED, account.entries().get(1001L).ruleCode());
+        assertEquals(RuleCode.ANSWER_ACCEPTED, account.entries().get("AA:1001").ruleCode());
     }
 
     @Test
     @DisplayName("同一 eventId 重复投递只计一次（INV-R-02）")
     void duplicateEventIsIgnored() {
         ReputationAccount account = ReputationAccount.open(USER);
-        account.apply(2001L, RuleCode.QUESTION_POSTED, NOW);
+        account.apply("QP:2001", RuleCode.QUESTION_POSTED, NOW);
 
-        assertFalse(account.apply(2001L, RuleCode.QUESTION_POSTED, NOW.plusSeconds(10)));
+        assertFalse(account.apply("QP:2001", RuleCode.QUESTION_POSTED, NOW.plusSeconds(10)));
 
         assertEquals(3, account.score().value(), "1 + 2，只加一次");
         assertEquals(1, account.entries().size());
@@ -56,7 +56,7 @@ class ReputationAccountTest {
         ReputationAccount account = ReputationAccount.open(USER);
 
         for (int i = 0; i < 5; i++) {
-            account.apply(3000L + i, RuleCode.DOWNVOTE_RECEIVED, NOW);
+            account.apply("DOWN:" + i, RuleCode.DOWNVOTE_RECEIVED, NOW);
         }
 
         assertEquals(1, account.score().value());
