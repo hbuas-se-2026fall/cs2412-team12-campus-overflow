@@ -5,21 +5,18 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * 共享内核的参考实现：内存版标签词表。
+ * 内存版标签词表：只用于单元测试与本地演示。
  *
- * <p>由装配层用 {@code campus-overflow.tags.vocabulary} 配置项初始化，不依赖任何框架，
- * 因此单元测试可以直接 {@code new InMemoryTagVocabulary(Set.of(...))}。</p>
+ * <p>生产实现是装配层的 {@code JdbcTagVocabulary}（词表落 {@code tag} 表）。</p>
  */
 public final class InMemoryTagVocabulary implements TagVocabulary {
 
-    private final Set<Tag> tags;
+    private final Set<Tag> tags = new LinkedHashSet<>();
 
     public InMemoryTagVocabulary(Collection<String> rawTags) {
-        Set<Tag> parsed = new LinkedHashSet<>();
         if (rawTags != null) {
-            rawTags.forEach(raw -> parsed.add(Tag.of(raw)));
+            rawTags.forEach(raw -> tags.add(Tag.of(raw)));
         }
-        this.tags = Set.copyOf(parsed);
     }
 
     @Override
@@ -29,6 +26,12 @@ public final class InMemoryTagVocabulary implements TagVocabulary {
 
     @Override
     public Set<Tag> all() {
-        return tags;
+        return Set.copyOf(tags);
+    }
+
+    @Override
+    public Tag registerIfAbsent(Tag tag) {
+        tags.add(tag);
+        return tag;
     }
 }

@@ -94,15 +94,20 @@ class QuestionApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("标签不在共享词表 SK-01 中返回 400 + INV-Q-02")
-    void unknownTagRejected() throws Exception {
+    @DisplayName("Sprint 3：词表外标签自动登记（US-10），不再返回 INV-Q-02")
+    void unknownTagIsAutoRegistered() throws Exception {
         String userId = registerAndVerify("tag-" + UUID.randomUUID() + "@hbuas.edu.cn");
 
+        String tag = "新标签" + UUID.randomUUID().toString().substring(0, 6);
         mockMvc.perform(post("/api/v1/questions")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(questionJson(userId, "这个问题带了一个词表外的标签", List.of("我自己造的词"))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INV-Q-02"));
+                        .content(questionJson(userId, "这个问题带了一个词表外的新标签", List.of(tag))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tags[0]").value(tag));
+
+        mockMvc.perform(get("/api/v1/tags"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@ == '" + tag + "')]").exists());
     }
 
     @Test
