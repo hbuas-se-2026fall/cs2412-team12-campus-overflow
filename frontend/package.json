@@ -1,0 +1,58 @@
+{
+  "name": "campus-overflow-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CampusOverflow 前端（Lab 5）：React 18 + TypeScript 5 + Vite，与 Lab 4 后端端到端贯通",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "api:generate": "openapi --input ../docs/api/openapi.yaml --output src/api/generated --client axios && node scripts/patch-generated.mjs",
+    "e2e": "playwright test",
+    "prepare": "node scripts/install-git-hooks.mjs"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.62.7",
+    "antd": "^5.22.5",
+    "axios": "^1.7.9",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.3.0",
+    "openapi-typescript-codegen": "^0.29.0",
+    "prettier": "^3.4.2",
+    "typescript": "~5.6.3",
+    "typescript-eslint": "^8.18.1",
+    "vite": "^6.0.7"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,css,html,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
+}
