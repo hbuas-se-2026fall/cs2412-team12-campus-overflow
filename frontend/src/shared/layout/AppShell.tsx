@@ -4,6 +4,7 @@ import { Alert, Button, Layout, Menu, Space, Spin, Tag, Typography } from 'antd'
 
 import { useSessionStore } from '@/shared/store/sessionStore';
 import { useUiStore } from '@/shared/store/uiStore';
+import { ReputationBadge } from '@/features/questions/components/ReputationBadge';
 
 const { Header, Sider, Content } = Layout;
 
@@ -46,13 +47,16 @@ export function AppShell() {
           <Typography.Title level={4} style={{ margin: 0 }}>
             CampusOverflow
           </Typography.Title>
-          <Tag color="blue">Lab 5 · Sprint 2</Tag>
+          <Tag color="blue">Lab 6 · Sprint 3</Tag>
         </Space>
 
         <Space size="middle">
           {pendingRequests > 0 ? <Spin size="small" /> : null}
           {user ? (
-            <Typography.Text type="secondary">当前用户：{user.nickname}</Typography.Text>
+            <>
+              <Typography.Text type="secondary">当前用户：{user.nickname}</Typography.Text>
+              <ReputationBadge userId={user.id} />
+            </>
           ) : ensuring ? (
             <Typography.Text type="secondary">正在准备演示账号…</Typography.Text>
           ) : null}

@@ -151,8 +151,7 @@ export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptio
         resolve(options, config.HEADERS),
     ]);
 
-    // 浏览器原生 FormData 由 axios 自动补 multipart 边界，这里不需要 form-data 的 getHeaders()
-    const formHeaders: Record<string, string> = {};
+    const formHeaders: Record<string, string> = {} // 浏览器原生 FormData 由 axios 自动补边界
 
     const headers = Object.entries({
         Accept: 'application/json',

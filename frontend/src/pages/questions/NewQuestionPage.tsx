@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card, Form, Input, Select, Space, Typography, message } from 'antd';
 
 import { AppApiError } from '@/api/http';
-import { useCreateQuestion } from '@/features/questions/hooks';
+import { useCreateQuestion, useTags } from '@/features/questions/hooks';
 import { TAG_OPTIONS } from '@/shared/constants/tags';
 import { useSessionStore } from '@/shared/store/sessionStore';
 
@@ -18,6 +18,12 @@ export function NewQuestionPage() {
   const user = useSessionStore((state) => state.user);
   const ensuring = useSessionStore((state) => state.ensuring);
   const createQuestion = useCreateQuestion();
+  // 标签从后端词表拉取（US-10）；拉取失败时退回内置常量，保证离线也能演示
+  const { data: apiTags = [] } = useTags();
+  const tagOptions = (apiTags.length > 0 ? apiTags : TAG_OPTIONS).map((value) => ({
+    value,
+    label: value,
+  }));
 
   const canSubmit = Boolean(user) && !ensuring;
 
@@ -91,12 +97,7 @@ export function NewQuestionPage() {
         </Form.Item>
 
         <Form.Item name="tags" label="标签（最多 5 个，来自共享词表）">
-          <Select
-            mode="multiple"
-            maxCount={5}
-            placeholder="选择标签"
-            options={TAG_OPTIONS.map((tag) => ({ value: tag, label: tag }))}
-          />
+          <Select mode="multiple" maxCount={5} placeholder="选择标签" options={tagOptions} />
         </Form.Item>
 
         <Form.Item>
