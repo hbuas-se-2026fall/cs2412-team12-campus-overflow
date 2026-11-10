@@ -1,0 +1,10 @@
+#!/bin/sh
+# Lab 5 提交物③：pre-commit 钩子（仓库根级，服务 frontend/ 子工程）
+#
+# 1) lint-staged 只检查/格式化暂存区文件（--relative 让路径相对 frontend 解析）
+# 2) typecheck 全量跑一次 tsc --noEmit，防止 any 逃逸与类型回归
+set -e
+
+cd frontend
+pnpm exec lint-staged --relative
+pnpm typecheck

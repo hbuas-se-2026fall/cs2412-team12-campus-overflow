@@ -6,6 +6,7 @@ import com.campusoverflow.qa.application.command.CreateQuestionCommand;
 import com.campusoverflow.qa.domain.model.Question;
 import com.campusoverflow.qa.interfaces.rest.dto.AcceptAnswerRequest;
 import com.campusoverflow.qa.interfaces.rest.dto.CreateQuestionRequest;
+import com.campusoverflow.qa.interfaces.rest.dto.QuestionPageResponse;
 import com.campusoverflow.qa.interfaces.rest.dto.QuestionResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -42,6 +44,13 @@ public class QuestionController {
         var location = uriBuilder.path("/api/v1/questions/{id}")
                 .buildAndExpand(question.id().asString()).toUri();
         return ResponseEntity.created(location).body(QuestionResponse.from(question));
+    }
+
+    /** 问题列表（US-03 的最小实现，Lab 5 前端首页使用）。 */
+    @GetMapping
+    public QuestionPageResponse list(@RequestParam(name = "page", defaultValue = "0") int page,
+                                     @RequestParam(name = "size", defaultValue = "20") int size) {
+        return QuestionPageResponse.from(questionApplicationService.list(page, size));
     }
 
     /** 查看问题详情（US-05 的最小实现，便于端到端验证"写进去能读出来"）。 */

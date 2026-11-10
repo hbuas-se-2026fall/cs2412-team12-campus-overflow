@@ -2,6 +2,7 @@ package com.campusoverflow.qa.application;
 
 import com.campusoverflow.qa.application.command.AcceptAnswerCommand;
 import com.campusoverflow.qa.application.command.CreateQuestionCommand;
+import com.campusoverflow.qa.application.view.QuestionPage;
 import com.campusoverflow.qa.domain.model.Answer;
 import com.campusoverflow.qa.domain.model.AnswerId;
 import com.campusoverflow.qa.domain.model.AnswerInvariants;
@@ -118,6 +119,22 @@ public class QuestionApplicationService {
     public Question get(QuestionId id) {
         return questionRepository.findById(id)
                 .orElseThrow(() -> EntityNotFoundException.of("问题", id));
+    }
+
+    /**
+     * 问题列表（US-03 的最小实现，Lab 5 前端"提问 → 列表显示"依赖它）。
+     *
+     * <p>分页参数在这里夹紧：页码不能为负、每页最多 100 条，避免前端传错参数把库打穿。</p>
+     */
+    @Transactional(readOnly = true)
+    public QuestionPage list(int page, int size) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(100, Math.max(1, size));
+        return new QuestionPage(
+                questionRepository.findPage(safePage, safeSize),
+                safePage,
+                safeSize,
+                questionRepository.count());
     }
 
     /** 与数据库 DATETIME(6) 对齐：先截断到微秒，避免写回后精度"变小"。 */
