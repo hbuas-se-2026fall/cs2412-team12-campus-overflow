@@ -1,0 +1,507 @@
+{
+  "info": {
+    "_postman_id": "7b1f3c2e-6a4d-4c8e-9f10-2b3c4d5e6f70",
+    "name": "CampusOverflow Lab4 · 后端端到端",
+    "description": "第 12 组 · Lab 4 提交物 ④。\n\n使用顺序：\n1. 先跑「01 身份」把 userId 写进集合变量；\n2. 再跑「02 问答」，`POST /api/v1/questions` 会把 questionId 写进变量，后面的详情请求依赖它；\n3.「03 异常分支」验证统一错误格式与不变式错误码。\n\n前置条件：应用已启动（默认 http://localhost:8080），数据库 campus_overflow 已由 Flyway 初始化。\n标签必须来自共享词表 SK-01（见 application.yml 的 campus-overflow.tags.vocabulary）。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "questionId",
+      "value": ""
+    },
+    {
+      "key": "pendingUserId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 身份 · 注册与邮箱验证",
+      "item": [
+        {
+          "name": "01-1 注册账号（初始 pending）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('userId', body.id);",
+                  "pm.test('初始状态为 pending（INV-U-04 起点）', () => pm.expect(body.status).to.eql('pending'));",
+                  "pm.test('响应里不含密码哈希', () => pm.expect(JSON.stringify(body)).to.not.include('$2a$'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tao@hbuas.edu.cn\",\n  \"nickname\": \"陶浩峰\",\n  \"password\": \"abc12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            },
+            "description": "US-01 第一步。邮箱会被统一小写；密码只存 bcrypt 哈希（INV-U-03）。"
+          }
+        },
+        {
+          "name": "01-2 验证邮箱（pending → active）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('状态变为 active（INV-U-04）', () => pm.expect(pm.response.json().status).to.eql('active'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}/email-verification",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{userId}}",
+                "email-verification"
+              ]
+            },
+            "description": "模拟用户点击邮件里的验证链接。真实实现会校验 token，Lab 4 先跑通状态机。"
+          }
+        },
+        {
+          "name": "01-3 查询账号",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('密码哈希不外泄', () => pm.expect(JSON.stringify(pm.response.json())).to.not.include('passwordHash'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 问答 · Lab 4 核心接口",
+      "item": [
+        {
+          "name": "02-1 发布问题（成功用例 · 201）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('返回 Location 头', () => pm.expect(pm.response.headers.has('Location')).to.be.true);",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('questionId', body.id);",
+                  "pm.test('初始状态 open、票数 0', () => {",
+                  "  pm.expect(body.status).to.eql('open');",
+                  "  pm.expect(body.voteCount).to.eql(0);",
+                  "});",
+                  "pm.test('标签原样返回（2 个）', () => pm.expect(body.tags).to.eql(['flyway', 'spring-data-jpa']));",
+                  "pm.test('回显提问者', () => pm.expect(body.askerId).to.eql(pm.collectionVariables.get('userId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"askerId\": \"{{userId}}\",\n  \"title\": \"Flyway 和 JPA 的初始化顺序应该怎么配？\",\n  \"body\": \"启动时 Hibernate 先跑，报错说表不存在。\\n\\n我希望迁移脚本先执行，实体只做校验。\",\n  \"tags\": [\"flyway\", \"spring-data-jpa\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "questions"
+              ]
+            },
+            "description": "Lab 4 的验收接口。链路：QuestionController → QuestionApplicationService → AskerVerifier（跨上下文）→ Question 聚合 → QuestionRepositoryAdapter → MySQL。"
+          }
+        },
+        {
+          "name": "02-2 查看问题详情（写进去能读出来）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('标题与发布时一致', () => pm.expect(pm.response.json().title).to.eql('Flyway 和 JPA 的初始化顺序应该怎么配？'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/questions/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "questions",
+                "{{questionId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 异常分支 · 统一错误响应",
+      "item": [
+        {
+          "name": "03-1 标题过短 → 400 VALIDATION_FAILED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('错误码为 VALIDATION_FAILED', () => pm.expect(body.code).to.eql('VALIDATION_FAILED'));",
+                  "pm.test('details 指出是 title 字段', () => pm.expect(body.details[0].field).to.eql('title'));",
+                  "pm.test('带 traceId 便于排查', () => pm.expect(body.traceId).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"askerId\": \"{{userId}}\",\n  \"title\": \"短\",\n  \"body\": \"标题只有 1 个字，接口层就该拒绝。\",\n  \"tags\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "questions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "03-2 标签不在 SK-01 词表 → 400 INV-Q-02",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('错误码为 INV-Q-02', () => pm.expect(pm.response.json().code).to.eql('INV-Q-02'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"askerId\": \"{{userId}}\",\n  \"title\": \"这个问题的标签是临时造出来的\",\n  \"body\": \"共享词表里没有这个词，应该被拒绝。\",\n  \"tags\": [\"我自己造的词\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "questions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "03-3 未验证账号发帖 → 400 INV-U-02",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('错误码为 INV-U-02', () => pm.expect(pm.response.json().code).to.eql('INV-U-02'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"askerId\": \"{{pendingUserId}}\",\n  \"title\": \"未验证邮箱的账号不能发布问题\",\n  \"body\": \"这条请求应当被身份上下文的 INV-U-02 拒绝。\",\n  \"tags\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "questions"
+              ]
+            },
+            "description": "先跑「03-0 注册一个不验证的账号」拿到 pendingUserId。"
+          }
+        },
+        {
+          "name": "03-0 注册一个不验证的账号（为 03-3 准备）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('pendingUserId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"pending-{{$timestamp}}@hbuas.edu.cn\",\n  \"nickname\": \"待验证同学\",\n  \"password\": \"abc12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "03-4 不存在的提问者 → 404 NOT_FOUND",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('错误码为 NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"askerId\": \"00000000-0000-4000-8000-000000000000\",\n  \"title\": \"提问者根本不存在的问题\",\n  \"body\": \"这个 UUID 在 user 表里查不到。\",\n  \"tags\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "questions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "03-5 重复邮箱注册 → 409 INV-U-01",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('错误码为 INV-U-01', () => pm.expect(pm.response.json().code).to.eql('INV-U-01'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tao@hbuas.edu.cn\",\n  \"nickname\": \"重复注册\",\n  \"password\": \"abc12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
