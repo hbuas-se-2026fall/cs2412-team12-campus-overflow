@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    # H2 内存库 + MySQL 兼容模式：让 CI / 未装 MySQL 的同学也能 mvn clean install 全绿
+    # NON_KEYWORDS=USER 是因为业务表名就叫 user（统一语言：账号不叫 account 表？见 ADR-002 说明）
+    url: "jdbc:h2:mem:campus_overflow;MODE=MySQL;DATABASE_TO_LOWER=TRUE;NON_KEYWORDS=USER;DB_CLOSE_DELAY=-1"
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  # 测试用 Hibernate 建表，不跑 Flyway（MySQL 专用 DDL 由本地实测覆盖，见 docs/lab4/验证记录.md）
+  flyway:
+    enabled: false
+
+logging:
+  level:
+    root: WARN
+    com.campusoverflow: INFO
