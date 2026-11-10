@@ -29,30 +29,34 @@ public final class Answer extends AggregateRoot {
     private Body body;
     private AnswerStatus status;
     private boolean accepted;
+    private int voteCount;
     private Instant updatedAt;
 
     private Answer(AnswerId id, QuestionId questionId, UserId authorId, Body body,
-                   AnswerStatus status, boolean accepted, Instant createdAt, Instant updatedAt) {
+                   AnswerStatus status, boolean accepted, int voteCount,
+                   Instant createdAt, Instant updatedAt) {
         this.id = Objects.requireNonNull(id, "answerId 不能为空");
         this.questionId = Objects.requireNonNull(questionId, "questionId 不能为空");
         this.authorId = Objects.requireNonNull(authorId, "authorId 不能为空");
         this.body = Objects.requireNonNull(body, "body 不能为空");
         this.status = Objects.requireNonNull(status, "status 不能为空");
         this.accepted = accepted;
+        this.voteCount = voteCount;
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt 不能为空");
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt 不能为空");
     }
 
     /** 提交回答（{@code SubmitAnswer}）。 */
     public static Answer submit(AnswerId id, QuestionId questionId, UserId authorId, Body body, Instant now) {
-        Answer answer = new Answer(id, questionId, authorId, body, AnswerStatus.NORMAL, false, now, now);
+        Answer answer = new Answer(id, questionId, authorId, body, AnswerStatus.NORMAL, false, 0, now, now);
         answer.registerEvent(new AnswerSubmitted(id, questionId, authorId, now));
         return answer;
     }
 
     public static Answer rehydrate(AnswerId id, QuestionId questionId, UserId authorId, Body body,
-                                   AnswerStatus status, boolean accepted, Instant createdAt, Instant updatedAt) {
-        return new Answer(id, questionId, authorId, body, status, accepted, createdAt, updatedAt);
+                                   AnswerStatus status, boolean accepted, int voteCount,
+                                   Instant createdAt, Instant updatedAt) {
+        return new Answer(id, questionId, authorId, body, status, accepted, voteCount, createdAt, updatedAt);
     }
 
     /** 编辑：仅作者本人，且未被下架。 */
@@ -67,6 +71,20 @@ public final class Answer extends AggregateRoot {
     public void markAccepted(Instant now) {
         assertVisible("被采纳");
         this.accepted = true;
+        this.updatedAt = Objects.requireNonNull(now, "now 不能为空");
+    }
+
+    /**
+     * 票数投影变化（{@code INV-V-04}：下架内容不再接受投票）。
+     *
+     * <p>与 Question 一致：票数是投影值，投票记录本身在 {@link Vote} 聚合里。</p>
+     */
+    public void applyVoteProjection(int delta, Instant now) {
+        if (delta != 1 && delta != -1 && delta != 2 && delta != -2) {
+            throw new IllegalArgumentException("票数投影只允许 ±1 或 ±2，收到：" + delta);
+        }
+        assertVisible("被投票");
+        this.voteCount = Math.addExact(voteCount, delta);
         this.updatedAt = Objects.requireNonNull(now, "now 不能为空");
     }
 
@@ -122,6 +140,10 @@ public final class Answer extends AggregateRoot {
 
     public boolean isAccepted() {
         return accepted;
+    }
+
+    public int voteCount() {
+        return voteCount;
     }
 
     public Instant createdAt() {

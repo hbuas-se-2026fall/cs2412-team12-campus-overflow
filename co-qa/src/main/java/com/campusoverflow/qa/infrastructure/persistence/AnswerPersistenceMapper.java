@@ -24,6 +24,7 @@ final class AnswerPersistenceMapper {
                 answer.body().value(),
                 answer.status().code(),
                 answer.isAccepted(),
+                answer.voteCount(),
                 answer.createdAt(),
                 answer.updatedAt());
     }
@@ -36,6 +37,7 @@ final class AnswerPersistenceMapper {
                 new Body(entity.getBody()),
                 AnswerStatus.valueOf(entity.getStatus().toUpperCase(Locale.ROOT)),
                 entity.isAccepted(),
+                entity.getVoteCount(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt());
     }

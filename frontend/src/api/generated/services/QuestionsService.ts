@@ -14,12 +14,14 @@ export class QuestionsService {
      * 问题列表（按创建时间倒序分页）
      * @param page 页码，从 0 开始
      * @param size 每页条数（1–100）
+     * @param tag 按标签筛选（US-10）
      * @returns QuestionPageResponse 分页结果
      * @throws ApiError
      */
     public static listQuestions(
         page?: number,
         size: number = 20,
+        tag?: string,
     ): CancelablePromise<QuestionPageResponse> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -27,6 +29,7 @@ export class QuestionsService {
             query: {
                 'page': page,
                 'size': size,
+                'tag': tag,
             },
         });
     }
@@ -74,7 +77,7 @@ export class QuestionsService {
      * 采纳答案（仅提问者）
      * @param id
      * @param requestBody
-     * @returns QuestionResponse 采纳后的问題
+     * @returns QuestionResponse 采纳后的问题
      * @throws ApiError
      */
     public static acceptAnswer(

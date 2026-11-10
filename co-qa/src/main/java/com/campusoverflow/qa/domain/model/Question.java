@@ -87,16 +87,20 @@ public final class Question extends AggregateRoot {
     /**
      * 采纳答案（{@code AcceptAnswer}）：仅提问者（{@code INV-Q-03}），全问题最多一个（{@code INV-Q-04}）。
      *
-     * <p>"答案是否属于本问题""答案是否被下架"属于跨聚合校验，由应用服务在调用本方法前完成。</p>
+     * <p>"答案是否属于本问题""答案是否被下架"属于跨聚合校验，由应用服务在调用本方法前完成；
+     * {@code acceptedAnswerAuthorId} 用于给新作者 +15，{@code previousAnswerAuthorId} 是改判时
+     * 上一位被采纳者的 ID（首次采纳为 null），声誉上下文据此冲正。</p>
      *
      * @return 是否真的发生了改判（重复采纳同一条答案返回 false，不产生事件）
      */
-    public boolean acceptAnswer(AnswerId answerId, UserId operatorId, Instant now) {
+    public boolean acceptAnswer(AnswerId answerId, UserId acceptedAnswerAuthorId,
+                                UserId previousAnswerAuthorId, UserId operatorId, Instant now) {
         assertVisible("采纳答案");
         if (!askerId.equals(operatorId)) {
             throw new InvariantViolationException(QuestionInvariants.ACCEPT_ONLY_ASKER, "只有提问者本人可以采纳答案");
         }
         Objects.requireNonNull(answerId, "answerId 不能为空");
+        Objects.requireNonNull(acceptedAnswerAuthorId, "acceptedAnswerAuthorId 不能为空");
         AcceptedAnswerId next = AcceptedAnswerId.of(answerId);
         if (next.equals(acceptedAnswerId)) {
             return false;
@@ -105,7 +109,8 @@ public final class Question extends AggregateRoot {
         this.acceptedAnswerId = next;
         this.status = QuestionStatus.SOLVED;
         this.updatedAt = Objects.requireNonNull(now, "now 不能为空");
-        registerEvent(new AnswerAccepted(id, answerId, previous, askerId, now));
+        registerEvent(new AnswerAccepted(id, answerId, previous, askerId,
+                acceptedAnswerAuthorId, previousAnswerAuthorId, now));
         return true;
     }
 

@@ -1,10 +1,10 @@
 package com.campusoverflow.bootstrap.config;
 
 import com.campusoverflow.bootstrap.infrastructure.event.SpringDomainEventPublisher;
+import com.campusoverflow.bootstrap.infrastructure.tag.JpaTagVocabulary;
+import com.campusoverflow.bootstrap.infrastructure.tag.SpringDataTagRepository;
 import com.campusoverflow.shared.domain.DomainEventPublisher;
-import com.campusoverflow.shared.tag.InMemoryTagVocabulary;
 import com.campusoverflow.shared.tag.TagVocabulary;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,7 +17,6 @@ import java.time.Clock;
  * <p>领域模块不写 {@code @Configuration}，所有"选哪个实现"的决定集中在这里，方便按环境替换。</p>
  */
 @Configuration
-@EnableConfigurationProperties(TagVocabularyProperties.class)
 public class CoreConfiguration {
 
     /** 统一时钟：测试里可以换成 Clock.fixed(...)，领域代码不直接调 Instant.now()。 */
@@ -26,9 +25,10 @@ public class CoreConfiguration {
         return Clock.systemUTC();
     }
 
+    /** Sprint 3：词表从 application.yml 的内存白名单改为数据库表（US-10 可扩展）。 */
     @Bean
-    public TagVocabulary tagVocabulary(TagVocabularyProperties properties) {
-        return new InMemoryTagVocabulary(properties.vocabulary());
+    public TagVocabulary tagVocabulary(SpringDataTagRepository tagRepository, Clock clock) {
+        return new JpaTagVocabulary(tagRepository, clock);
     }
 
     @Bean

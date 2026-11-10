@@ -66,7 +66,7 @@ class QuestionTest {
     void rejectsAcceptanceByNonAsker() {
         Question question = sampleQuestion();
         InvariantViolationException ex = assertThrows(InvariantViolationException.class,
-                () -> question.acceptAnswer(AnswerId.newId(), OTHER, NOW.plusSeconds(60)));
+                () -> question.acceptAnswer(AnswerId.newId(), OTHER, null, OTHER, NOW.plusSeconds(60)));
         assertEquals(QuestionInvariants.ACCEPT_ONLY_ASKER, ex.code());
     }
 
@@ -77,15 +77,16 @@ class QuestionTest {
         AnswerId first = AnswerId.newId();
         AnswerId second = AnswerId.newId();
 
-        question.acceptAnswer(first, ASKER, NOW.plusSeconds(60));
+        question.acceptAnswer(first, ASKER, null, ASKER, NOW.plusSeconds(60));
         question.pullDomainEvents();
-        question.acceptAnswer(second, ASKER, NOW.plusSeconds(120));
+        question.acceptAnswer(second, ASKER, ASKER, ASKER, NOW.plusSeconds(120));
 
         List<DomainEvent> events = question.pullDomainEvents();
         assertEquals(1, events.size());
         AnswerAccepted event = assertInstanceOf(AnswerAccepted.class, events.get(0));
         assertEquals(second, event.acceptedAnswerId());
         assertEquals(first.value(), event.previousAcceptedAnswerId().value());
+        assertEquals(ASKER, event.previousAnswerAuthorId(), "改判要带出上一位作者，信誉上下文才能冲正");
         assertEquals(QuestionStatus.SOLVED, question.status());
     }
 
@@ -94,10 +95,10 @@ class QuestionTest {
     void acceptingSameAnswerIsIdempotent() {
         Question question = sampleQuestion();
         AnswerId answerId = AnswerId.newId();
-        question.acceptAnswer(answerId, ASKER, NOW.plusSeconds(60));
+        question.acceptAnswer(answerId, ASKER, null, ASKER, NOW.plusSeconds(60));
         question.pullDomainEvents();
 
-        boolean changed = question.acceptAnswer(answerId, ASKER, NOW.plusSeconds(120));
+        boolean changed = question.acceptAnswer(answerId, ASKER, null, ASKER, NOW.plusSeconds(120));
 
         assertFalse(changed);
         assertTrue(question.pullDomainEvents().isEmpty());
@@ -111,7 +112,7 @@ class QuestionTest {
 
         assertEquals(QuestionInvariants.HIDDEN_IMMUTABLE,
                 assertThrows(InvariantViolationException.class,
-                        () -> question.acceptAnswer(AnswerId.newId(), ASKER, NOW.plusSeconds(120))).code());
+                        () -> question.acceptAnswer(AnswerId.newId(), ASKER, null, ASKER, NOW.plusSeconds(120))).code());
         assertEquals(QuestionInvariants.HIDDEN_IMMUTABLE,
                 assertThrows(InvariantViolationException.class,
                         () -> question.applyVoteProjection(1, NOW.plusSeconds(120))).code());

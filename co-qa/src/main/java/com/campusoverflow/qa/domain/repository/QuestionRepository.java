@@ -18,15 +18,17 @@ public interface QuestionRepository {
     boolean existsById(QuestionId id);
 
     /**
-     * 按创建时间倒序分页查询（US-03 的最小实现）。
-     *
-     * <p>注意：这是直接查聚合，属于 Sprint 2 的临时读法；Sprint 3 的 US-13 搜索会改为
-     * {@code co-discovery} 的读模型投影，届时本方法会被替换，领域模型不受影响。</p>
+     * 按创建时间倒序分页查询（US-03）。
      *
      * @param page 从 0 开始的页码
      * @param size 每页条数（1–100）
      */
     List<Question> findPage(int page, int size);
 
+    /** 按标签筛选（US-10），走 question_tag 派生索引。 */
+    List<Question> findPageByTag(String tag, int page, int size);
+
     long count();
+
+    long countByTag(String tag);
 }

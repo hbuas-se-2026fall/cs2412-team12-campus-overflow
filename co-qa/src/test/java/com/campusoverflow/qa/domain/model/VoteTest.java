@@ -20,7 +20,7 @@ class VoteTest {
     private static final Instant NOW = Instant.parse("2026-11-09T02:00:00Z");
     private static final UserId AUTHOR = UserId.newId();
     private static final UserId VOTER = UserId.newId();
-    private static final VoteTarget TARGET = VoteTarget.question(QuestionId.newId());
+    private static final ContentTarget TARGET = ContentTarget.question(QuestionId.newId());
 
     @Test
     @DisplayName("INV-V-02：不能给自己的内容投票")
@@ -65,7 +65,7 @@ class VoteTest {
     @DisplayName("投票目标区分问题与回答，避免 ID 撞车")
     void targetCarriesType() {
         QuestionId questionId = QuestionId.newId();
-        assertEquals(TargetType.QUESTION, VoteTarget.question(questionId).type());
-        assertEquals(TargetType.ANSWER, VoteTarget.answer(AnswerId.newId()).type());
+        assertEquals(TargetType.QUESTION, ContentTarget.question(questionId).type());
+        assertEquals(TargetType.ANSWER, ContentTarget.answer(AnswerId.newId()).type());
     }
 }

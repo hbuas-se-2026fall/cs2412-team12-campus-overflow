@@ -12,12 +12,21 @@
 
     <artifactId>co-reputation</artifactId>
     <name>co-reputation</name>
-    <description>声誉上下文骨架：ReputationAccount 聚合（INV-R-01~04）、RuleCode 规则码；持久化随 US-11 落地</description>
+    <description>声誉上下文：ReputationAccount 聚合（INV-R-01~04）、规则码、事件驱动的持久化与查询接口（Sprint 3 / US-11）</description>
 
     <dependencies>
         <dependency>
             <groupId>com.campusoverflow</groupId>
             <artifactId>co-shared-kernel</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
         <dependency>

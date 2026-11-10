@@ -44,31 +44,9 @@ spring:
   lifecycle:
     timeout-per-shutdown-phase: 20s
 
-# 标签词表 SK-01：共享内核（问答 ↔ 发现）共同认可的标签集合。
-# 新增词条要经过两个上下文同意，见 Lab 3 术语表 #13 与聚合清单 SK-01。
-campus-overflow:
-  tags:
-    vocabulary:
-      - java
-      - spring-boot
-      - spring-data-jpa
-      - mysql
-      - flyway
-      - ddd
-      - maven
-      - junit
-      - docker
-      - git
-      - react
-      - typescript
-      - 数据库
-      - 算法
-      - 校园生活
-      - 选课
-      - 考研
-      - 实习
-      - 保研
-      - 实验室
+# 标签词表 SK-01 从 Sprint 3（US-10）起落在数据库 tag 表：
+# 初始词表见 db/migration/V2__sprint3_schema.sql，发帖时未知标签会自动登记。
+# 原来写在 application.yml 里的 campus-overflow.tags.vocabulary 已移除，避免两处维护同一份词表。
 
 logging:
   level:

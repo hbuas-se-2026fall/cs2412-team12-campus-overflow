@@ -4,6 +4,7 @@ import com.campusoverflow.qa.domain.model.Answer;
 import com.campusoverflow.qa.domain.model.AnswerId;
 import com.campusoverflow.qa.domain.model.QuestionId;
 import com.campusoverflow.qa.domain.repository.AnswerRepository;
+import com.campusoverflow.shared.identity.UserId;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -31,6 +32,13 @@ public class AnswerRepositoryAdapter implements AnswerRepository {
         return jpa.findByQuestionIdOrderByCreatedAtAsc(questionId.asString()).stream()
                 .map(AnswerPersistenceMapper::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Optional<Answer> findLatestByQuestionAndAuthor(QuestionId questionId, UserId authorId) {
+        return jpa.findFirstByQuestionIdAndAuthorIdOrderByCreatedAtDesc(
+                        questionId.asString(), authorId.asString())
+                .map(AnswerPersistenceMapper::toDomain);
     }
 
     @Override
