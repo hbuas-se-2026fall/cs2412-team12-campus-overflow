@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.campusoverflow</groupId>
+        <artifactId>campus-overflow</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>co-reputation</artifactId>
+    <name>co-reputation</name>
+    <description>声誉上下文骨架：ReputationAccount 聚合（INV-R-01~04）、RuleCode 规则码；持久化随 US-11 落地</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.campusoverflow</groupId>
+            <artifactId>co-shared-kernel</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
