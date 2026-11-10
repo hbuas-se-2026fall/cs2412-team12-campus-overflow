@@ -1,10 +1,12 @@
-# CampusOverflow · 后端（Lab 4）+ 前端（Lab 5）
+# CampusOverflow · 后端（Lab 4）+ 前端（Lab 5）+ Sprint 3 核心特性（Lab 6）
 
-> 《软件工程》课程项目 · 第 12 组 · Sprint 2
+> 《软件工程》课程项目 · 第 12 组 · Sprint 2–3
 >
 > **后端**：按 DDD 限界上下文物理分包的 Spring Boot 多模块工程（6 个 Maven 模块，domain / application / infrastructure / interfaces 四层），
 > `POST /api/v1/questions` 打通 Controller → ApplicationService → Repository → MySQL。
 > **前端**：React 18 + TypeScript 5 + Vite 6，已与后端端到端贯通「提问 → 列表显示 → 详情查看」（见 [`frontend/README.md`](frontend/README.md)）。
+> **Sprint 3**：投票、采纳、评论、标签、声誉计算全部落地，声誉由问答领域事件在事务提交后驱动
+> （见 [`ADR-003`](docs/adr/ADR-003-sprint3-core-features.md)）。
 
 | 交付物 | 位置 | 状态 |
 |---|---|---|
@@ -15,6 +17,10 @@
 | 附：本地 MySQL 实测记录（截图级证据） | [`docs/lab4/验证记录.md`](docs/lab4/验证记录.md) | ✅ |
 | **Lab 5** 前端工程（`pnpm dev` / lint / typecheck / E2E） | [`frontend/`](frontend/README.md) | ✅ |
 | 附：Lab 5 验证记录（真实浏览器 + 录像 + SELECT） | [`docs/lab5/验证记录.md`](docs/lab5/验证记录.md) | ✅ |
+| **Lab 6** Sprint 3 增量（投票 / 采纳 / 评论 / 标签 / 声誉） | `co-qa`、`co-reputation`、`V2__sprint3_schema.sql` | ✅ |
+| ⑥ 关键设计 ADR | [`docs/adr/ADR-003-sprint3-core-features.md`](docs/adr/ADR-003-sprint3-core-features.md) | ✅ |
+| ⑦ Sprint 3 回顾纪要 | [`docs/retro/sprint-3.md`](docs/retro/sprint-3.md) | ✅ |
+| 附：Lab 6 验证记录（真库 + E2E + 跨模块 BUG） | [`docs/lab6/验证记录.md`](docs/lab6/验证记录.md) | ✅ |
 
 ---
 
@@ -197,6 +203,12 @@ curl -X POST http://localhost:8080/api/v1/questions \
 | **POST** | **`/api/v1/questions`** | **发布问题（Lab 4 端到端接口）** | **US-04** |
 | GET | `/api/v1/questions/{id}` | 问题详情 | US-05 |
 | POST | `/api/v1/questions/{id}/acceptance` | 采纳答案 | US-08 |
+| POST / GET | `/api/v1/answers` | 提交回答 / 某问题的回答列表 | US-06 |
+| POST / DELETE | `/api/v1/votes` | 投票、改票、撤票 | US-07 |
+| POST / GET / DELETE | `/api/v1/comments`、`/api/v1/comments/{id}` | 评论 | US-09 |
+| GET | `/api/v1/tags` | 标签词表（可扩展） | US-10 |
+| GET | `/api/v1/questions?tag=` | 按标签筛选 | US-10 |
+| GET | `/api/v1/users/{id}/reputation` | 声誉分与明细 | US-11 |
 
 ### 5.2 `POST /api/v1/questions`
 
@@ -293,17 +305,20 @@ mvn -pl co-qa test       # 只跑问答上下文
 
 ---
 
-## 8. 已知边界（Lab 4 范围内刻意不做）
+## 8. 边界与已知缺口（Sprint 3 结项时）
 
-| 项 | 为什么现在不做 | 何时做 |
+| 项 | 现状 | 何时补 |
 |---|---|---|
-| 登录鉴权 / JWT | US-02 在 Sprint 2 末尾；现在 `askerId` 由请求体显式传入，接入后改由会话解析，命令对象不变 | Sprint 2 末 |
-| 回答接口 `POST /questions/{id}/answers` | Lab 4 只要求一个端到端接口；`Answer` 聚合与表已就绪 | Sprint 2 末（US-06） |
-| 问题列表 / 分页 | `co-discovery` 读模型仍是骨架 | Sprint 2 末（US-03） |
-| 投票接口 | `Vote` 目前是值对象，Lab 3 结论是它要独立成聚合（避免热点行锁） | Sprint 3（US-07） |
-| 标签检索 | 标签暂存 CSV，等 US-10 再拆 `question_tag` 表 | Sprint 3（US-10） |
-| 声誉持久化 | `co-reputation` 只有领域模型与单元测试 | Sprint 3（US-11/12） |
-| 治理（举报/下架审核） | 没有用例，暂由 `Question.hide()` 承接 | Sprint 4（US-24） |
+| 登录鉴权 / JWT | 前端用自动演示账号获取 `askerId`；后端未校验身份 | Sprint 4（US-02 增强） |
+| 通知（被回答/被采纳/被评论） | 事件已发出，但没有订阅方写通知表 | Sprint 4（US-14） |
+| 标签治理（同义词合并、敏感词） | 词表已可扩展，但无审核/合并 | Sprint 4（US-10 增强） |
+| 排行榜 / 徽章 | 声誉明细已就绪，未做聚合榜 | Sprint 4（US-17/18） |
+| 治理（举报/下架审核） | 暂由 `Question.hide()` 承接 | Sprint 4（US-19/24） |
+| 票数/声誉重算任务 | 目前只写不纠偏 | Sprint 4 运维任务 |
+| 测试环境与 MySQL 的差异 | `vote.value` 保留字问题已修，但 DDL 仍是两套（Flyway + H2 ddl-auto） | Sprint 4 引入 Testcontainers |
+
+> Sprint 2 的缺口（回答、列表、投票、标签、声誉）已在 Sprint 3 全部补齐；
+> 完整实现见 [ADR-003](docs/adr/ADR-003-sprint3-core-features.md)。
 
 ---
 
@@ -316,4 +331,5 @@ mvn -pl co-qa test       # 只跑问答上下文
 - [小组分工（WBS / PR 拆分 / 评审配对）](docs/lab4/小组分工.md)
 - [提交与 PR 说明（UPLOAD）](UPLOAD.md)
 - **Lab 5**：[前端 README](frontend/README.md)、[Lab 5 验证记录](docs/lab5/验证记录.md)、[Lab 5 小组分工](docs/lab5/小组分工.md)
+- **Lab 6**：[ADR-003](docs/adr/ADR-003-sprint3-core-features.md)、[Sprint 3 回顾](docs/retro/sprint-3.md)、[Lab 6 验证记录](docs/lab6/验证记录.md)、[Lab 6 小组分工](docs/lab6/小组分工.md)
 - Lab 3 产出（同仓库 `docs/ddd/`）：聚合识别清单、上下文映射、统一语言术语表

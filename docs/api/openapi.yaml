@@ -92,6 +92,11 @@ paths:
             default: 20
             minimum: 1
             maximum: 100
+        - name: tag
+          in: query
+          description: 按标签筛选（US-10）
+          schema:
+            type: string
       responses:
         '200':
           description: 分页结果
@@ -162,7 +167,7 @@ paths:
               $ref: '#/components/schemas/AcceptAnswerRequest'
       responses:
         '200':
-          description: 采纳后的问題
+          description: 采纳后的问题
           content:
             application/json:
               schema:
@@ -175,6 +180,205 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/v1/tags:
+    get:
+      tags: [Tags]
+      operationId: listTags
+      summary: 标签词表（US-10，可扩展）
+      responses:
+        '200':
+          description: 标签列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /api/v1/answers:
+    post:
+      tags: [Answers]
+      operationId: submitAnswer
+      summary: 提交回答（US-06）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAnswerRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnswerResponse'
+        '400':
+          description: INV-A-02（问题已下架）/ INV-A-03（60 秒限流）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags: [Answers]
+      operationId: listAnswers
+      summary: 某问题下的回答
+      parameters:
+        - name: questionId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 回答列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AnswerResponse'
+
+  /api/v1/votes:
+    post:
+      tags: [Votes]
+      operationId: castVote
+      summary: 投票 / 改票（US-07，幂等）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CastVoteRequest'
+      responses:
+        '200':
+          description: 投票结果（含目标最新票数）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoteResponse'
+        '400':
+          description: INV-V-02（不能自投）/ INV-V-04（已下架）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Votes]
+      operationId: retractVote
+      summary: 撤票（幂等）
+      parameters:
+        - name: targetType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [question, answer]
+        - name: targetId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: voterId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 已撤票
+
+  /api/v1/comments:
+    post:
+      tags: [Comments]
+      operationId: postComment
+      summary: 发表评论（US-09）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+      responses:
+        '200':
+          description: 评论
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentResponse'
+    get:
+      tags: [Comments]
+      operationId: listComments
+      summary: 某目标下的评论
+      parameters:
+        - name: targetType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [question, answer]
+        - name: targetId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 评论列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CommentResponse'
+
+  /api/v1/comments/{id}:
+    delete:
+      tags: [Comments]
+      operationId: deleteComment
+      summary: 删除自己的评论（INV-C-03）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: operatorId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 已删除
+        '403':
+          description: 不是作者
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/users/{id}/reputation:
+    get:
+      tags: [Reputation]
+      operationId: getReputation
+      summary: 用户声誉与明细（US-11）
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: 声誉
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReputationResponse'
 
 components:
   parameters:
@@ -202,6 +406,150 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
 
   schemas:
+    CreateAnswerRequest:
+      type: object
+      required: [questionId, authorId, body]
+      properties:
+        questionId:
+          type: string
+          format: uuid
+        authorId:
+          type: string
+          format: uuid
+        body:
+          type: string
+          maxLength: 10000
+
+    AnswerResponse:
+      type: object
+      required: [id, questionId, authorId, body, status, accepted, voteCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        questionId:
+          type: string
+          format: uuid
+        authorId:
+          type: string
+          format: uuid
+        body:
+          type: string
+        status:
+          type: string
+          enum: [normal, hidden]
+        accepted:
+          type: boolean
+        voteCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CastVoteRequest:
+      type: object
+      required: [targetType, targetId, voterId, value]
+      properties:
+        targetType:
+          type: string
+          enum: [question, answer]
+        targetId:
+          type: string
+          format: uuid
+        voterId:
+          type: string
+          format: uuid
+        value:
+          type: string
+          enum: [up, down]
+
+    VoteResponse:
+      type: object
+      required: [targetType, targetId, voterId, value, targetVoteCount]
+      properties:
+        targetType:
+          type: string
+          enum: [question, answer]
+        targetId:
+          type: string
+          format: uuid
+        voterId:
+          type: string
+          format: uuid
+        value:
+          type: string
+          enum: [up, down]
+        targetVoteCount:
+          type: integer
+
+    CreateCommentRequest:
+      type: object
+      required: [targetType, targetId, authorId, body]
+      properties:
+        targetType:
+          type: string
+          enum: [question, answer]
+        targetId:
+          type: string
+          format: uuid
+        authorId:
+          type: string
+          format: uuid
+        body:
+          type: string
+          maxLength: 500
+
+    CommentResponse:
+      type: object
+      required: [id, targetType, targetId, authorId, body, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        targetType:
+          type: string
+          enum: [question, answer]
+        targetId:
+          type: string
+          format: uuid
+        authorId:
+          type: string
+          format: uuid
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ReputationResponse:
+      type: object
+      required: [userId, score, entries]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        score:
+          type: integer
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReputationEntry'
+
+    ReputationEntry:
+      type: object
+      required: [ruleCode, delta, occurredAt]
+      properties:
+        ruleCode:
+          type: string
+        delta:
+          type: integer
+        occurredAt:
+          type: string
+          format: date-time
+
     RegisterUserRequest:
       type: object
       required: [email, nickname, password]
