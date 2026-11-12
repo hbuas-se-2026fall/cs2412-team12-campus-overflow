@@ -332,4 +332,5 @@ mvn -pl co-qa test       # 只跑问答上下文
 - [提交与 PR 说明（UPLOAD）](UPLOAD.md)
 - **Lab 5**：[前端 README](frontend/README.md)、[Lab 5 验证记录](docs/lab5/验证记录.md)、[Lab 5 小组分工](docs/lab5/小组分工.md)
 - **Lab 6**：[ADR-003](docs/adr/ADR-003-sprint3-core-features.md)、[Sprint 3 回顾](docs/retro/sprint-3.md)、[Lab 6 验证记录](docs/lab6/验证记录.md)、[Lab 6 小组分工](docs/lab6/小组分工.md)
+- **代码导读（给评审老师）**：[docs/代码导读.md](docs/代码导读.md)
 - Lab 3 产出（同仓库 `docs/ddd/`）：聚合识别清单、上下文映射、统一语言术语表
