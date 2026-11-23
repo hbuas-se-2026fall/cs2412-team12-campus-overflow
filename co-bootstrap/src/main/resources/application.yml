@@ -1,6 +1,12 @@
 server:
   port: ${SERVER_PORT:8080}
   shutdown: graceful
+  # 部署在 Nginx 后面：信任 X-Forwarded-*，让日志与指标拿到真实客户端 IP / 协议
+  forward-headers-strategy: framework
+  compression:
+    enabled: true
+    mime-types: application/json,text/html,text/css,application/javascript
+    min-response-size: 1024
 
 spring:
   application:
@@ -53,3 +59,42 @@ logging:
     root: INFO
     com.campusoverflow: INFO
     org.hibernate.SQL: WARN
+
+# ============================================================================
+# Lab 8：监控与运维端点
+#   /actuator/health            —— 健康检查（docker healthcheck 与部署 smoke test 用）
+#   /actuator/health/liveness   —— 存活探针（不查数据库）
+#   /actuator/health/readiness  —— 就绪探针（含 DB）
+#   /actuator/prometheus        —— Prometheus 抓取入口
+#   /actuator/metrics           —— 指标列表（本机排查用）
+# ============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  info:
+    env:
+      enabled: true
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        readiness:
+          include: db,diskSpace,ping
+  metrics:
+    tags:
+      application: campus-overflow
+      env: ${DEPLOY_ENV:local}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+info:
+  app:
+    name: CampusOverflow
+    version: 0.1.0-SNAPSHOT
+    description: 校园问答系统（Lab 8 上线版）

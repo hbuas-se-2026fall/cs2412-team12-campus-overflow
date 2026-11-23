@@ -1,6 +1,7 @@
 package com.campusoverflow.qa.application;
 
 import com.campusoverflow.qa.application.command.PostCommentCommand;
+import com.campusoverflow.qa.domain.event.CommentPosted;
 import com.campusoverflow.qa.domain.model.Answer;
 import com.campusoverflow.qa.domain.model.AnswerId;
 import com.campusoverflow.qa.domain.model.Body;
@@ -14,6 +15,8 @@ import com.campusoverflow.qa.domain.model.Title;
 import com.campusoverflow.qa.domain.repository.AnswerRepository;
 import com.campusoverflow.qa.domain.repository.CommentRepository;
 import com.campusoverflow.qa.domain.repository.QuestionRepository;
+import com.campusoverflow.shared.domain.DomainEvent;
+import com.campusoverflow.shared.domain.DomainEventPublisher;
 import com.campusoverflow.shared.domain.EntityNotFoundException;
 import com.campusoverflow.shared.domain.InvariantViolationException;
 import com.campusoverflow.shared.identity.UserId;
@@ -58,12 +61,15 @@ class CommentApplicationServiceTest {
     @Mock
     private CommentRepository commentRepository;
 
+    @Mock
+    private DomainEventPublisher eventPublisher;
+
     private CommentApplicationService service;
 
     @BeforeEach
     void setUp() {
         service = new CommentApplicationService(questionRepository, answerRepository, commentRepository,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                eventPublisher, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
@@ -82,6 +88,11 @@ class CommentApplicationServiceTest {
         ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
         verify(commentRepository).save(captor.capture());
         assertEquals(AUTHOR, captor.getValue().authorId());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<DomainEvent>> events = ArgumentCaptor.forClass(List.class);
+        verify(eventPublisher).publish(events.capture());
+        assertEquals(comment.id(), ((CommentPosted) events.getValue().get(0)).commentId());
     }
 
     @Test
