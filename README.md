@@ -1,5 +1,7 @@
 # CampusOverflow · 后端（Lab 4）+ 前端（Lab 5）+ Sprint 3 核心特性（Lab 6）+ 测试门禁（Lab 7）+ 上线（Lab 8）
 
+[![CI](https://github.com/hbuas-se-2026fall/cs2412-team12-campus-overflow/actions/workflows/ci.yml/badge.svg)](https://github.com/hbuas-se-2026fall/cs2412-team12-campus-overflow/actions/workflows/ci.yml)
+
 > 《软件工程》课程项目 · 第 12 组 · Sprint 2–4
 >
 > **后端**：按 DDD 限界上下文物理分包的 Spring Boot 多模块工程（8 个 Maven 模块，domain / application / infrastructure / interfaces 四层），
@@ -424,3 +426,13 @@ push(main) → backend(mvn verify) + frontend(lint/typecheck/build)
 ```
 
 未配置 `DEPLOY_HOST` 时部署步骤自动跳过；配置方法见 [`docs/lab8/部署方案.md`](docs/lab8/部署方案.md) §4。
+
+已发布的镜像（main 每次构建自动推送）：
+
+```text
+ghcr.io/hbuas-se-2026fall/cs2412-team12-campus-overflow/backend:sha-<commit>
+ghcr.io/hbuas-se-2026fall/cs2412-team12-campus-overflow/frontend:sha-<commit>
+```
+
+CI 运行记录：<https://github.com/hbuas-se-2026fall/cs2412-team12-campus-overflow/actions/workflows/ci.yml>
+（`backend` 用 MySQL service 容器跑真实库集成测试；`images` 构建双镜像；`deploy` 未配服务器时跳过）。
