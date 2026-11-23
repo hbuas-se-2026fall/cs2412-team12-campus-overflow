@@ -1,0 +1,152 @@
+# ============================================================================
+# CampusOverflow 一键启动（Lab 8）
+#
+#   cp .env.example .env && vi .env          # 填数据库/Grafana 密码
+#   docker compose up -d --build             # 首次构建并启动
+#   docker compose ps                        # 查看健康状态
+#   docker compose logs -f app               # 跟踪后端日志
+#   docker compose down                      # 停止（保留数据卷）
+#   docker compose down -v                   # 停止并删除数据（慎用）
+#
+# 端口：
+#   80    —— Nginx（前端 + /api 反代 + /actuator 健康检查）
+#   9090  —— Prometheus（仅本机，SSH 隧道访问）
+#   3000  —— Grafana（仅本机，SSH 隧道访问）
+# ============================================================================
+name: campus-overflow
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: co-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+08:00
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-campus_overflow}
+      MYSQL_USER: ${MYSQL_USER:-campus}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中设置 MYSQL_PASSWORD}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      # 用 mysqladmin ping 判断真实可连接，而不是只看进程存在
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 40s
+    networks:
+      - backend
+
+  # Sprint 4 预留：会话/热点问题缓存。当前业务代码不依赖它，
+  # 因此即使 Redis 挂掉也不影响主流程（见 docs/lab8/部署方案.md §7）。
+  redis:
+    image: redis:7-alpine
+    container_name: co-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - backend
+
+  app:
+    image: ${APP_IMAGE:-campus-overflow/backend:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: co-app
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-campus_overflow}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      DB_USERNAME: ${MYSQL_USER:-campus}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DEPLOY_ENV: ${DEPLOY_ENV:-production}
+      SERVER_PORT: 8080
+      TZ: ${TZ:-Asia/Shanghai}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health/readiness >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - backend
+
+  nginx:
+    image: ${FRONTEND_IMAGE:-campus-overflow/frontend:latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: co-nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - backend
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: co-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    depends_on:
+      - app
+    networks:
+      - backend
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: co-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?请在 .env 中设置 GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - backend
+
+volumes:
+  mysql-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  backend:
+    driver: bridge

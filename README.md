@@ -1,12 +1,14 @@
-# CampusOverflow · 后端（Lab 4）+ 前端（Lab 5）+ Sprint 3 核心特性（Lab 6）
+# CampusOverflow · 后端（Lab 4）+ 前端（Lab 5）+ Sprint 3 核心特性（Lab 6）+ 测试门禁（Lab 7）+ 上线（Lab 8）
 
-> 《软件工程》课程项目 · 第 12 组 · Sprint 2–3
+> 《软件工程》课程项目 · 第 12 组 · Sprint 2–4
 >
-> **后端**：按 DDD 限界上下文物理分包的 Spring Boot 多模块工程（6 个 Maven 模块，domain / application / infrastructure / interfaces 四层），
+> **后端**：按 DDD 限界上下文物理分包的 Spring Boot 多模块工程（8 个 Maven 模块，domain / application / infrastructure / interfaces 四层），
 > `POST /api/v1/questions` 打通 Controller → ApplicationService → Repository → MySQL。
 > **前端**：React 18 + TypeScript 5 + Vite 6，已与后端端到端贯通「提问 → 列表显示 → 详情查看」（见 [`frontend/README.md`](frontend/README.md)）。
 > **Sprint 3**：投票、采纳、评论、标签、声誉计算全部落地，声誉由问答领域事件在事务提交后驱动
 > （见 [`ADR-003`](docs/adr/ADR-003-sprint3-core-features.md)）。
+> **质量与上线**：112 个测试 + 覆盖率 93.1% + Checkstyle 门禁（Lab 7）；Docker 多阶段镜像、compose 六服务、
+> Prometheus + Grafana 监控与 CI/CD 自动部署（Lab 8）。
 
 | 交付物 | 位置 | 状态 |
 |---|---|---|
@@ -24,6 +26,9 @@
 | **Lab 7** 测试与质量门禁（覆盖率 / 契约 / CI） | `pom.xml`、`co-coverage/`、`.github/workflows/ci.yml` | ✅ |
 | ⑧ 团队代码评审清单 v1.0 + 5 份评审记录 | [`docs/team/review-checklist.md`](docs/team/review-checklist.md)、[`docs/review/`](docs/review/) | ✅ |
 | 附：Lab 7 验证记录（覆盖率与门禁输出） | [`docs/lab7/验证记录.md`](docs/lab7/验证记录.md) | ✅ |
+| **Lab 8** 容器化 + CI/CD + 监控（compose 六服务） | `Dockerfile`、`frontend/Dockerfile`、`docker-compose.yml`、`deploy/`、`.github/workflows/ci.yml` | ✅ |
+| ⑨ 运维手册 v1.0（启停/回滚/故障/备份） | [`docs/lab8/运维手册.md`](docs/lab8/运维手册.md) | ✅ |
+| 附：Lab 8 部署方案与验证记录 | [`docs/lab8/部署方案.md`](docs/lab8/部署方案.md)、[`docs/lab8/验证记录.md`](docs/lab8/验证记录.md) | ✅ |
 
 ---
 
@@ -115,6 +120,19 @@ co-bootstrap ──► 所有上下文（唯一的装配点）
 ---
 
 ## 4. 快速开始
+
+### 4.0 一条命令启动全套（Lab 8）
+
+```bash
+cp .env.example .env        # 改 MYSQL_ROOT_PASSWORD / MYSQL_PASSWORD / GRAFANA_ADMIN_PASSWORD
+docker compose up -d --build
+docker compose ps           # mysql → app → nginx 依次 healthy
+curl -s localhost/actuator/health
+# 前端 http://localhost/ ；Grafana：ssh -L 3000:127.0.0.1:3000 user@server → http://localhost:3000
+```
+
+> 本机没有 Docker 时按 4.1–4.3 手动启动。容器结构、监控与回滚见
+> [`docs/lab8/部署方案.md`](docs/lab8/部署方案.md) 与 [`docs/lab8/运维手册.md`](docs/lab8/运维手册.md)。
 
 ### 4.1 准备数据库（MySQL 8）
 
@@ -365,4 +383,44 @@ mvn clean verify sonar:sonar -Dsonar.host.url=http://localhost:9000
 - **Lab 5**：[前端 README](frontend/README.md)、[Lab 5 验证记录](docs/lab5/验证记录.md)、[Lab 5 小组分工](docs/lab5/小组分工.md)
 - **Lab 6**：[ADR-003](docs/adr/ADR-003-sprint3-core-features.md)、[Sprint 3 回顾](docs/retro/sprint-3.md)、[Lab 6 验证记录](docs/lab6/验证记录.md)、[Lab 6 小组分工](docs/lab6/小组分工.md)
 - **Lab 7**：[评审清单 v1.0](docs/team/review-checklist.md)、[评审记录](docs/review/)、[Lab 7 验证记录](docs/lab7/验证记录.md)、[Lab 7 小组分工](docs/lab7/小组分工.md)
+- **Lab 8**：[部署方案](docs/lab8/部署方案.md)、[运维手册 v1.0](docs/lab8/运维手册.md)、[Lab 8 验证记录](docs/lab8/验证记录.md)、[Lab 8 小组分工](docs/lab8/小组分工.md)
 - Lab 3 产出（同仓库 `docs/ddd/`）：聚合识别清单、上下文映射、统一语言术语表
+
+---
+
+## 10. 部署与可观测性（Lab 8）
+
+### 10.1 容器与编排
+
+| 组件 | 镜像 | 说明 |
+|---|---|---|
+| `nginx` | `nginx:1.27-alpine`（多阶段构建产物） | 静态资源 + `/api` 反代 + SPA fallback |
+| `app` | `eclipse-temurin:21-jre-alpine`（多阶段） | 非 root `app` 用户，健康检查 `/actuator/health/readiness` |
+| `mysql` | `mysql:8.4` | 数据卷 `mysql-data`，Flyway 自动迁移 |
+| `redis` | `redis:7-alpine` | Sprint 4 预留缓存（当前业务不依赖） |
+| `prometheus` | `prom/prometheus:v2.54.1` | 抓取 `app:8080/actuator/prometheus` |
+| `grafana` | `grafana/grafana:11.2.0` | 看板「CampusOverflow · 生产概览」自动加载 |
+
+`docker compose up -d --build` 一条命令启动；依赖顺序由 `depends_on: condition: service_healthy` 保证。
+
+### 10.2 可观测指标（10+）
+
+| 类别 | 指标 |
+|---|---|
+| 业务 | `campusoverflow_questions_posted_total`、`answers_submitted_total`、`answers_accepted_total`、`votes_cast_total{value}`、`comments_posted_total` |
+| HTTP | `http_server_requests_seconds_count/{bucket}`（QPS、p50/p95、5xx 比例） |
+| JVM | `jvm_memory_used_bytes`、`jvm_gc_*`、`process_cpu_usage` |
+| 数据库 | `hikaricp_connections_active/idle/pending` |
+
+告警规则（`deploy/prometheus/alerts.yml`）：p95 > 500ms、5xx > 1%、实例下线、堆占用 > 90%。
+
+### 10.3 CI/CD
+
+```
+push(main) → backend(mvn verify) + frontend(lint/typecheck/build)
+           → images(docker build & push GHCR)
+           → deploy(SSH: compose pull + up -d --no-deps)
+           → smoke test(/actuator/health/readiness，最长 90s)
+```
+
+未配置 `DEPLOY_HOST` 时部署步骤自动跳过；配置方法见 [`docs/lab8/部署方案.md`](docs/lab8/部署方案.md) §4。

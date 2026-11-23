@@ -1,6 +1,7 @@
 package com.campusoverflow.qa.application;
 
 import com.campusoverflow.qa.application.command.PostCommentCommand;
+import com.campusoverflow.qa.domain.event.CommentPosted;
 import com.campusoverflow.qa.domain.model.AnswerId;
 import com.campusoverflow.qa.domain.model.Comment;
 import com.campusoverflow.qa.domain.model.CommentId;
@@ -10,6 +11,7 @@ import com.campusoverflow.qa.domain.model.TargetType;
 import com.campusoverflow.qa.domain.repository.AnswerRepository;
 import com.campusoverflow.qa.domain.repository.CommentRepository;
 import com.campusoverflow.qa.domain.repository.QuestionRepository;
+import com.campusoverflow.shared.domain.DomainEventPublisher;
 import com.campusoverflow.shared.domain.EntityNotFoundException;
 import com.campusoverflow.shared.identity.UserId;
 import org.springframework.stereotype.Service;
@@ -30,15 +32,18 @@ public class CommentApplicationService {
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final CommentRepository commentRepository;
+    private final DomainEventPublisher eventPublisher;
     private final Clock clock;
 
     public CommentApplicationService(QuestionRepository questionRepository,
                                      AnswerRepository answerRepository,
                                      CommentRepository commentRepository,
+                                     DomainEventPublisher eventPublisher,
                                      Clock clock) {
         this.questionRepository = questionRepository;
         this.answerRepository = answerRepository;
         this.commentRepository = commentRepository;
+        this.eventPublisher = eventPublisher;
         this.clock = clock;
     }
 
@@ -49,7 +54,9 @@ public class CommentApplicationService {
         ensureTargetExists(target);
         Comment comment = Comment.post(CommentId.newId(), target,
                 UserId.of(command.authorId()), command.body(), now());
-        return commentRepository.save(comment);
+        Comment saved = commentRepository.save(comment);
+        eventPublisher.publish(List.of(new CommentPosted(saved.id(), saved.target(), saved.authorId(), now())));
+        return saved;
     }
 
     @Transactional(readOnly = true)
