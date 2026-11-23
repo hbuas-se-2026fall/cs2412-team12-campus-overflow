@@ -1,0 +1,15 @@
+# 构建上下文排除（后端镜像只需要源码与 POM）
+.git
+.gitignore
+.idea
+.vscode
+**/target
+**/*.log
+frontend/node_modules
+frontend/dist
+frontend/test-results
+frontend/playwright-report
+test-results
+docs
+*.md
+!README.md
