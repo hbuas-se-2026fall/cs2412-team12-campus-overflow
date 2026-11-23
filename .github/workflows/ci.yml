@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 后端：编译 + 测试 + JaCoCo 覆盖率 + Checkstyle 质量门禁
+  # Testcontainers 用例在 GitHub Actions 的 ubuntu runner 上会自动启用（有 Docker）
+  # ---------------------------------------------------------------------------
+  backend:
+    name: backend · mvn verify（测试 + 覆盖率 + Checkstyle）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: mvn clean verify
+        run: mvn -B clean verify
+
+      - name: 上传 JaCoCo HTML 报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: '**/target/site/jacoco/**'
+          if-no-files-found: warn
+
+      - name: 上传 Checkstyle 报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkstyle-report
+          path: '**/target/checkstyle-result.xml'
+          if-no-files-found: warn
+
+      # SonarQube 是可选步骤：配置了 SONAR_TOKEN / SONAR_HOST_URL 才执行
+      - name: SonarQube 扫描与质量门禁
+        if: ${{ secrets.SONAR_TOKEN != '' }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          mvn -B sonar:sonar
+          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
+          -Dsonar.qualitygate.wait=true
+
+  # ---------------------------------------------------------------------------
+  # 前端：类型检查 + ESLint + 生产构建
+  # ---------------------------------------------------------------------------
+  frontend:
+    name: frontend · lint + typecheck + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build

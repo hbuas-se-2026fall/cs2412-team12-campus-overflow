@@ -90,6 +90,53 @@ class UserTest {
                 () -> user.changeNickname(Nickname.of("新名字"), NOW.plusSeconds(180)));
     }
 
+    @Test
+    @DisplayName("修改密码：校验策略后重新编码，禁用账号被拒绝")
+    void changePasswordRules() {
+        User user = newUser("pwd@hbuas.edu.cn", "abc12345");
+        user.verifyEmail(NOW.plusSeconds(60));
+
+        user.changePassword("newpass123", ENCODER, NOW.plusSeconds(120));
+        assertTrue(user.passwordHash().value().startsWith("$2a$10$"));
+
+        assertThrows(InvariantViolationException.class,
+                () -> user.changePassword("short1", ENCODER, NOW.plusSeconds(180)));
+
+        user.disable(NOW.plusSeconds(240), "违规");
+        assertThrows(InvariantViolationException.class,
+                () -> user.changePassword("newpass456", ENCODER, NOW.plusSeconds(300)));
+    }
+
+    @Test
+    @DisplayName("rehydrate 保留全部状态，且不产生新事件")
+    void rehydrateKeepsState() {
+        User user = User.rehydrate(UserId.newId(), Email.of("re@hbuas.edu.cn"), Nickname.of("回放"),
+                PasswordHash.of("$2a$10$hash"), UserStatus.ACTIVE, NOW, NOW.plusSeconds(60));
+
+        assertEquals(UserStatus.ACTIVE, user.status());
+        assertTrue(user.canPublish());
+        assertTrue(user.pullDomainEvents().isEmpty());
+    }
+
+    @Test
+    @DisplayName("密码哈希：只接受看起来像 bcrypt 的编码值")
+    void passwordHashDetection() {
+        assertTrue(PasswordHash.of("$2a$10$abcdef").looksEncoded());
+        assertFalse(PasswordHash.of("plain-text").looksEncoded());
+        assertEquals("PasswordHash{***}", PasswordHash.of("$2a$10$x").toString());
+        assertThrows(InvariantViolationException.class, () -> PasswordHash.of("  "));
+    }
+
+    @Test
+    @DisplayName("邮箱与昵称的长度/格式边界")
+    void emailAndNicknameBoundaries() {
+        assertThrows(InvariantViolationException.class, () -> Email.of("not-an-email"));
+        assertThrows(InvariantViolationException.class,
+                () -> Email.of("a".repeat(250) + "@x.com"));
+        assertThrows(InvariantViolationException.class, () -> Nickname.of("长".repeat(33)));
+        assertEquals("昵称", Nickname.of("  昵称  ").value());
+    }
+
     private static User newUser(String email, String password) {
         return User.register(UserId.newId(), Email.of(email), Nickname.of("测试同学"),
                 password, ENCODER, NOW);

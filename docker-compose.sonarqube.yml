@@ -1,0 +1,37 @@
+# ============================================================================
+# 本地 SonarQube（Lab 7 Step 3）
+#
+#   docker compose -f docker-compose.sonarqube.yml up -d
+#   # 首次启动约 1–2 分钟，浏览器打开 http://localhost:9000（admin/admin）
+#   # 生成 token 后：
+#   set SONAR_TOKEN=<token>
+#   mvn clean verify sonar:sonar
+#
+#   # 关闭并清理：
+#   docker compose -f docker-compose.sonarqube.yml down -v
+#
+# 说明：课程环境没有 Docker 时，可用 SonarQube 官方 zip 启动嵌入式实例（H2 数据库），
+# 效果相同；本文件是团队约定的标准启动方式。
+# ============================================================================
+services:
+  sonarqube:
+    image: sonarqube:10.7-community
+    container_name: campus-overflow-sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/system/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:

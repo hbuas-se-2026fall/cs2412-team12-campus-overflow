@@ -19,6 +19,8 @@
         <module>co-reputation</module>
         <module>co-discovery</module>
         <module>co-bootstrap</module>
+        <!-- Lab 7：只用于聚合覆盖率报告，不参与运行 -->
+        <module>co-coverage</module>
     </modules>
 
     <properties>
@@ -32,6 +34,11 @@
 
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
+        <!-- Lab 7：覆盖率与静态检查工具版本 -->
+        <jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
+        <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
+        <maven-checkstyle.version>10.20.1</maven-checkstyle.version>
+        <sonar-maven-plugin.version>4.0.0.4121</sonar-maven-plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -77,6 +84,11 @@
                 <artifactId>co-discovery</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.campusoverflow</groupId>
+                <artifactId>co-bootstrap</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -107,12 +119,62 @@
                 <version>${maven-surefire-plugin.version}</version>
                 <configuration>
                     <!--
+                      @{argLine}：让 JaCoCo 的 prepare-agent 注入的 -javaagent 生效。
                       jdk.attach.allowAttachSelf：Mockito 的 inline mock maker 需要自附加 agent。
                       不加这个参数时 ByteBuddy 会退化成"另起一个 JVM 进程去 attach"，
                       在没有进程创建权限的环境（容器、受限沙箱、部分 CI）里会直接失败。
                     -->
-                    <argLine>-Dfile.encoding=UTF-8 -Djdk.attach.allowAttachSelf=true -XX:+EnableDynamicAgentLoading</argLine>
+                    <argLine>@{argLine} -Dfile.encoding=UTF-8 -Djdk.attach.allowAttachSelf=true -XX:+EnableDynamicAgentLoading</argLine>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${maven-checkstyle-plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>${maven-checkstyle.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <configLocation>${session.executionRootDirectory}/config/checkstyle/checkstyle.xml</configLocation>
+                    <consoleOutput>true</consoleOutput>
+                    <failOnViolation>true</failOnViolation>
+                    <violationSeverity>error</violationSeverity>
+                    <includeTestSourceDirectory>false</includeTestSourceDirectory>
+                    <linkXRef>false</linkXRef>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>checkstyle-validate</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
