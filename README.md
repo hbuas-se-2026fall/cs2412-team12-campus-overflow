@@ -21,6 +21,9 @@
 | ⑥ 关键设计 ADR | [`docs/adr/ADR-003-sprint3-core-features.md`](docs/adr/ADR-003-sprint3-core-features.md) | ✅ |
 | ⑦ Sprint 3 回顾纪要 | [`docs/retro/sprint-3.md`](docs/retro/sprint-3.md) | ✅ |
 | 附：Lab 6 验证记录（真库 + E2E + 跨模块 BUG） | [`docs/lab6/验证记录.md`](docs/lab6/验证记录.md) | ✅ |
+| **Lab 7** 测试与质量门禁（覆盖率 / 契约 / CI） | `pom.xml`、`co-coverage/`、`.github/workflows/ci.yml` | ✅ |
+| ⑧ 团队代码评审清单 v1.0 + 5 份评审记录 | [`docs/team/review-checklist.md`](docs/team/review-checklist.md)、[`docs/review/`](docs/review/) | ✅ |
+| 附：Lab 7 验证记录（覆盖率与门禁输出） | [`docs/lab7/验证记录.md`](docs/lab7/验证记录.md) | ✅ |
 
 ---
 
@@ -283,22 +286,51 @@ curl -X POST http://localhost:8080/api/v1/questions \
 
 ---
 
-## 7. 测试
+## 7. 测试与质量门禁（Lab 7）
 
 ```bash
-mvn test                 # 全部
-mvn -pl co-qa test       # 只跑问答上下文
+# 一次跑完：编译 → Checkstyle → 测试 → JaCoCo → 覆盖率聚合报告
+mvn clean verify
+
+# 覆盖率门禁（整体 ≥70%、核心聚合包 ≥90%）
+node tools/coverage-gate.mjs
+
+# 前端：类型 + lint + 构建（CI 同款）
+cd frontend && pnpm lint && pnpm typecheck && pnpm build
 ```
+
+| 门禁 | 工具 | 阈值 / 行为 |
+|---|---|---|
+| 静态检查 | Checkstyle 10（`config/checkstyle/checkstyle.xml`） | 0 violation 才继续构建 |
+| 覆盖率 | JaCoCo 0.8.12 + `co-coverage` 聚合模块 | 整体行覆盖 ≥70%；`*/domain/model` ≥90% |
+| 契约 | `OpenApiContractTest` | 所有 MVC 映射必须出现在 `docs/api/openapi.yaml`，响应结构符合 schema |
+| 集成 | Testcontainers（`MySqlContainerIntegrationTest`） | 无 Docker 自动跳过；CI 的 ubuntu runner 真实执行 |
+| 持续集成 | GitHub Actions（`.github/workflows/ci.yml`） | 后端 verify + 前端 lint/typecheck/build；有 `SONAR_TOKEN` 时推送 SonarQube |
+
+SonarQube（可选，需自备服务）：
+
+```bash
+docker compose -f docker-compose.sonarqube.yml up -d      # 首次启动约 1–2 分钟
+export SONAR_TOKEN=<token>
+mvn clean verify sonar:sonar -Dsonar.host.url=http://localhost:9000
+```
+
+> 注意：`.github/workflows/ci.yml` 与 Checkstyle 的配置路径都假设**在仓库根目录执行 mvn**；
+> 用 `mvn -f <path>` 从其他目录调用会找不到 `config/checkstyle/checkstyle.xml`。
+
+### 测试清单
 
 | 测试类 | 覆盖内容 |
 |---|---|
-| `UserTest`（6） | 密码策略、状态单向流转、未验证不能发布 |
-| `QuestionTest`（10） | INV-Q-01 ~ INV-Q-05、改判留痕、幂等采纳、票数投影 |
-| `AnswerTest`（7） | INV-A-01、INV-A-04、仅作者可操作、下架后不可编辑 |
-| `VoteTest`（5） | INV-V-02 自投拒绝、INV-V-03 改票净变化 ±2 |
-| `TagSetTest`（5） | 词表外标签、重复标签、CSV 往返 |
-| `ReputationAccountTest`（5） | INV-R-01 不低于 1 分、INV-R-02 eventId 幂等 |
-| `QuestionApiIntegrationTest`（6） | 注册→验证→发帖→读回（H2），以及 4 类错误分支 |
+| `UserTest` / `UserApplicationServiceTest` | 密码策略、状态单向流转、注册/验证事件（ArgumentCaptor） |
+| `QuestionTest` / `QuestionApplicationServiceTest` | INV-Q-01~05、采纳与改判、限流、分页夹紧 |
+| `AnswerTest` / `QaValueObjectTest` | INV-A-01/04、值对象与枚举边界 |
+| `VoteTest` / `VoteApplicationServiceTest` | INV-V-02/03、票数投影与声誉增量 |
+| `CommentApplicationServiceTest` | INV-C-01~03、目标存在性 |
+| `ReputationAccountTest` / `ReputationApplicationServiceTest` | INV-R-01/02、幂等与最小分 |
+| `QuestionApiIntegrationTest` / `Sprint3ApiIntegrationTest` | 接口级链路（H2） |
+| `OpenApiContractTest` | OpenAPI 契约完整性与响应结构 |
+| `MySqlContainerIntegrationTest` | 真实 MySQL + Flyway + `ddl-auto=validate` |
 
 > 如果 `mvn test` 在某些环境报 Mockito 自附加失败（`Could not self-attach to current VM`），
 > 父 POM 已经加了 `-Djdk.attach.allowAttachSelf=true`；再不行就在本地 `.mvn/jvm.config` 里补同样参数。
@@ -332,4 +364,5 @@ mvn -pl co-qa test       # 只跑问答上下文
 - [提交与 PR 说明（UPLOAD）](UPLOAD.md)
 - **Lab 5**：[前端 README](frontend/README.md)、[Lab 5 验证记录](docs/lab5/验证记录.md)、[Lab 5 小组分工](docs/lab5/小组分工.md)
 - **Lab 6**：[ADR-003](docs/adr/ADR-003-sprint3-core-features.md)、[Sprint 3 回顾](docs/retro/sprint-3.md)、[Lab 6 验证记录](docs/lab6/验证记录.md)、[Lab 6 小组分工](docs/lab6/小组分工.md)
+- **Lab 7**：[评审清单 v1.0](docs/team/review-checklist.md)、[评审记录](docs/review/)、[Lab 7 验证记录](docs/lab7/验证记录.md)、[Lab 7 小组分工](docs/lab7/小组分工.md)
 - Lab 3 产出（同仓库 `docs/ddd/`）：聚合识别清单、上下文映射、统一语言术语表
