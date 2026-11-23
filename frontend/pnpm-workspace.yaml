@@ -1,4 +1,12 @@
+# 前端是单包工程，但仍要保留 workspace 文件：
+#   - pnpm 9 要求存在 packages 字段（否则报 "packages field missing or empty"）
+#   - 构建脚本白名单（esbuild 需要 postinstall）在不同 pnpm 版本里键名不同，
+#     两个都写上：pnpm 9 认 onlyBuiltDependencies，pnpm 12 认 allowBuilds
+packages:
+  - '.'
+
 allowBuilds:
   esbuild: true
-# pnpm 12 起，构建脚本白名单等设置从 package.json 的 "pnpm" 字段搬到这里
-# esbuild 需要执行 postinstall 校验平台二进制，否则 vite 无法启动
+
+onlyBuiltDependencies:
+  - esbuild
