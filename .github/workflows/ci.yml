@@ -18,6 +18,10 @@ jobs:
   backend:
     name: backend · mvn verify（测试 + 覆盖率 + Checkstyle）
     runs-on: ubuntu-latest
+    # Secrets 不能直接写在 if 里（GitHub 会认为工作流非法），先落成环境变量再判断
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,12 +53,10 @@ jobs:
 
       # SonarQube 是可选步骤：配置了 SONAR_TOKEN / SONAR_HOST_URL 才执行
       - name: SonarQube 扫描与质量门禁
-        if: ${{ secrets.SONAR_TOKEN != '' }}
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        if: env.SONAR_TOKEN != ''
         run: >
           mvn -B sonar:sonar
-          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
+          -Dsonar.host.url=${{ env.SONAR_HOST_URL }}
           -Dsonar.qualitygate.wait=true
 
   # ---------------------------------------------------------------------------
