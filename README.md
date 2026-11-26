@@ -38,7 +38,7 @@
 
 | 角色 | 成员 | GitHub |
 |---|---|---|
-| PO（产品负责人） | 倪昊宇 | — |
+| PO（产品负责人） | 倪昊宇 | https://github.com/ennonhy |
 | SM（Scrum Master） | 陈玉豪 | https://github.com/215cyh |
 | SM（Scrum Master） | 刘铭洋 | https://github.com/215lmy |
 | Developer | 陶浩峰 | https://github.com/7WenL7 |
