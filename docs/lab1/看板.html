@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>CampusOverflow · 团队看板（Lab 1）</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 40px 28px;
+    font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    background: #f5f7fa; color: #1f2328;
+  }
+  header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 6px; }
+  h1 { font-size: 26px; margin: 0; letter-spacing: .5px; }
+  .badge { font-size: 13px; color: #57606a; border: 1px solid #d0d7de; border-radius: 999px; padding: 2px 10px; background: #fff; }
+  .sub { color: #57606a; font-size: 13px; margin: 4px 0 22px; }
+  .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .col { background: #eef1f5; border-radius: 12px; padding: 12px; min-height: 460px; display: flex; flex-direction: column; }
+  .col-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 12px; }
+  .col-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .count { font-size: 12px; color: #57606a; background: #fff; border-radius: 999px; padding: 1px 9px; border: 1px solid #d8dee4; }
+  .wip { font-size: 11px; color: #8c959f; margin-left: 6px; font-weight: 400; }
+  .card {
+    background: #fff; border: 1px solid #d8dee4; border-radius: 10px; padding: 12px 13px;
+    margin-bottom: 10px; box-shadow: 0 1px 0 rgba(31,35,40,.04);
+  }
+  .card-id { font-size: 11px; color: #57606a; letter-spacing: .3px; display: flex; justify-content: space-between; }
+  .card-title { font-size: 13.5px; line-height: 1.45; margin: 6px 0 10px; font-weight: 600; }
+  .card-foot { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #57606a; }
+  .tag { border-radius: 999px; padding: 1px 8px; font-size: 11px; }
+  .p0 { background: #ffebe9; color: #cf222e; }
+  .p1 { background: #fff8c5; color: #9a6700; }
+  .sp { background: #ddf4ff; color: #0969da; border-radius: 999px; padding: 1px 7px; font-weight: 700; }
+  .owner { display: inline-flex; align-items: center; gap: 5px; }
+  .avatar { width: 18px; height: 18px; border-radius: 50%; background: #0969da; color: #fff; font-size: 10px; display: inline-flex; align-items: center; justify-content: center; }
+  .empty { border: 1px dashed #c8d1da; border-radius: 10px; padding: 18px 10px; text-align: center; color: #8c959f; font-size: 12px; }
+  footer { margin-top: 20px; font-size: 12px; color: #57606a; line-height: 1.7; border-top: 1px solid #d8dee4; padding-top: 12px; }
+  code { background: #eef1f5; padding: 1px 5px; border-radius: 4px; font-size: 11.5px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>CampusOverflow · 团队看板</h1>
+    <span class="badge">Lab 1 交付快照</span>
+    <span class="badge">初始 Backlog 8 条</span>
+  </header>
+  <p class="sub">
+    第 12 组 ｜ 数据源：GitHub Issues #11–#18（标签 <code>status:To Do</code>）｜ 看板列：To Do / In Progress / In Review / Done
+  </p>
+
+  <div class="board">
+    <section class="col">
+      <div class="col-head">
+        <div class="col-title"><span class="dot" style="background:#8c959f"></span>To Do <span class="wip">WIP ∞</span></div>
+        <span class="count">8</span>
+      </div>
+
+      <article class="card">
+        <div class="card-id"><span>US-01 · #11</span><span class="tag p0">P0</span></div>
+        <div class="card-title">校园邮箱注册与邮箱验证</div>
+        <div class="card-foot"><span class="owner"><span class="avatar">陶</span>陶浩峰</span><span class="sp">5 SP</span></div>
+      </article>
+
+      <article class="card">
+        <div class="card-id"><span>US-02 · #12</span><span class="tag p0">P0</span></div>
+        <div class="card-title">登录会话与登出</div>
+        <div class="card-foot"><span class="owner"><span class="avatar">程</span>程靖轩</span><span class="sp">3 SP</span></div>
+      </article>
+
+      <article class="card">
+        <div class="card-id"><span>US-03 · #13</span><span class="tag p0">P0</span></div>
+        <div class="card-title">首页问题列表（分页）</div>
+        <div class="card-foot"><span class="owner"><span class="avatar">刘</span>刘铭洋</span><span class="sp">3 SP</span></div>
+      </article>
+
+      <article class="card">
+        <div class="card-id"><span>US-04 · #14</span><span class="tag p0">P0</span></div>
+        <div class="card-title">Markdown 写提问</div>
+        <div class="card-foot"><span class="owner"><span class="avatar">陶</span>陶浩峰</span><span class="sp">8 SP</span></div>
+      </article>
+
+      <article class="card">
+        <div class="card-id"><span>US-05 · #15</span><span class="tag p0">P0</span></div>
+        <div class="card-title">问题详情页</div>
+        <div class="card-foot"><span class="owner"><span class="avatar">刘</span>刘铭洋</span><span class="sp">3 SP</span></div>
+      </article>
+
+      <article class="card">
+        <div class="card-id"><span>US-06 · #16</span><span class="tag p0">P0</span></div>
+        <div class="card-title">提交回答</div>
+        <div class="card-foot"><span class="owner"><span class="avatar">程</span>程靖轩</span><span class="sp">5 SP</span></div>
+      </article>
+
+      <article class="card">
+        <div class="card-id"><span>US-07 · #17</span><span class="tag p0">P0</span></div>
+        <div class="card-title">问题与回答投票</div>
+        <div class="card-foot"><span class="owner"><span class="avatar">陈</span>陈玉豪</span><span class="sp">5 SP</span></div>
+      </article>
+
+      <article class="card">
+        <div class="card-id"><span>US-08 · #18</span><span class="tag p0">P0</span></div>
+        <div class="card-title">采纳最佳答案</div>
+        <div class="card-foot"><span class="owner"><span class="avatar">陈</span>陈玉豪</span><span class="sp">5 SP</span></div>
+      </article>
+    </section>
+
+    <section class="col">
+      <div class="col-head">
+        <div class="col-title"><span class="dot" style="background:#bf8700"></span>In Progress <span class="wip">WIP ≤ 3</span></div>
+        <span class="count">0</span>
+      </div>
+      <div class="empty">Sprint 1 计划会后，按 DoR 从 To Do 拉入</div>
+    </section>
+
+    <section class="col">
+      <div class="col-head">
+        <div class="col-title"><span class="dot" style="background:#8250df"></span>In Review <span class="wip">WIP ≤ 2</span></div>
+        <span class="count">0</span>
+      </div>
+      <div class="empty">PR 提交后进入，至少 1 名非作者 LGTM</div>
+    </section>
+
+    <section class="col">
+      <div class="col-head">
+        <div class="col-title"><span class="dot" style="background:#1a7f37"></span>Done <span class="wip">WIP ∞</span></div>
+        <span class="count">0</span>
+      </div>
+      <div class="empty">合并到 main 且通过验收后进入</div>
+    </section>
+  </div>
+
+  <footer>
+    列流转规则：<b>To Do</b>（满足 DoR：有验收要点、估算、负责人）→ <b>In Progress</b>（开分支、建 PR 草稿）→
+    <b>In Review</b>（PR 提交、CI 绿、非作者评审中）→ <b>Done</b>（LGTM + 合并 + 验收通过）。<br />
+    同步方式：Issues 上的 <code>status:*</code> 标签与看板列一一对应；GitHub Projects 建好后按标签一键分组即可。
+  </footer>
+</body>
+</html>
